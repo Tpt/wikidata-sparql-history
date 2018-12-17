@@ -1,0 +1,14 @@
+{
+  "type": "property",
+  "datatype": "time",
+  "id": "P3",
+  "labels": {
+    "en": {
+      "language": "en",
+      "value": "Time"
+    }
+  },
+  "descriptions": {},
+  "aliases": {},
+  "claims": {}
+}

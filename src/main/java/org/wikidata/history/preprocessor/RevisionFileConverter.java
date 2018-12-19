@@ -114,14 +114,10 @@ public class RevisionFileConverter {
                   VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, redirectionMatcher.group(2))
           )));
         } else {
-          try {
             ListRdfOutput output = new ListRdfOutput();
             RdfBuilder converter = new RdfBuilder(output, sites, propertyInformation);
             converter.addEntityDocument(entityReader.readValue(text));
             revisions.put(revisionId, output.getStatements());
-          } catch (Exception e) {
-            LOGGER.warn(e.getMessage(), e);
-          }
         }
       } catch (Exception e) {
         LOGGER.warn(e.getMessage(), e);

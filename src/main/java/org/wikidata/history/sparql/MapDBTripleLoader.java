@@ -110,22 +110,28 @@ public final class MapDBTripleLoader implements AutoCloseable {
     entryIterator(posIndex, 0, targetProperty, 0).forEachRemaining(targetEntry -> {
       NumericTriple targetTriple = targetEntry.getKey();
       long[] targetRange = targetEntry.getValue();
-      entryIterator(posIndex, 0, targetProperty, targetTriple.getSubject()).forEachRemaining(leftEntry ->
-              addTriple(spoIndex, posIndex,
-                      leftEntry.getKey().getSubject(),
-                      targetProperty,
-                      targetTriple.getObject(),
-                      LongRangeUtils.intersection(targetRange, leftEntry.getValue())
-              )
-      );
-      entryIterator(spoIndex, targetTriple.getObject(), targetProperty, 0).forEachRemaining(rightEntry ->
-              addTriple(spoIndex, posIndex,
-                      targetTriple.getSubject(),
-                      targetProperty,
-                      rightEntry.getKey().getObject(),
-                      LongRangeUtils.intersection(targetRange, rightEntry.getValue())
-              )
-      );
+      entryIterator(posIndex, 0, targetProperty, targetTriple.getSubject()).forEachRemaining(leftEntry -> {
+        long[] range = LongRangeUtils.intersection(targetRange, leftEntry.getValue());
+        if (range != null) {
+          addTriple(spoIndex, posIndex,
+                  leftEntry.getKey().getSubject(),
+                  targetProperty,
+                  targetTriple.getObject(),
+                  range
+          );
+        }
+      });
+      entryIterator(spoIndex, targetTriple.getObject(), targetProperty, 0).forEachRemaining(rightEntry -> {
+        long[] range = LongRangeUtils.intersection(targetRange, rightEntry.getValue());
+        if (range != null) {
+          addTriple(spoIndex, posIndex,
+                  targetTriple.getSubject(),
+                  targetProperty,
+                  rightEntry.getKey().getObject(),
+                  range
+          );
+        }
+      });
     });
   }
 

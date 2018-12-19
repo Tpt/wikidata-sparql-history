@@ -36,7 +36,6 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
@@ -64,17 +63,21 @@ class SparqlEndpoint {
   }
 
   void post(Context context) {
-    if ("application/x-www-form-urlencoded".equals(context.contentType())) {
+    String contentType = context.contentType();
+    if (contentType != null) {
+      contentType = contentType.split(";")[0].trim();
+    }
+    if ("application/x-www-form-urlencoded".equals(contentType)) {
       executeQuery(URLEncodedUtils.parse(context.body(), StandardCharsets.UTF_8).stream()
-                      .filter(t -> t.getName().equals("query"))
+                      .filter(t -> t.getName().trim().equals("query"))
                       .map(NameValuePair::getValue)
                       .findAny()
                       .orElseThrow(() -> new BadRequestResponse("The 'query' urlencoded parameter is mandatory")),
               context);
-    } else if ("application/sparql-query".equals(context.contentType())) {
+    } else if ("application/sparql-query".equals(contentType)) {
       executeQuery(context.body(), context);
     } else {
-      throw new BadRequestResponse("Unexpected Content-Type: " + context.contentType());
+      throw new BadRequestResponse("Unexpected Content-Type: " + contentType);
     }
   }
 
@@ -162,20 +165,27 @@ class SparqlEndpoint {
       return new InternalServerErrorResponse("Unable to write " + fileFormat);
     });
 
-    CompletableFuture completableFuture = new CompletableFuture();
-    executorService.submit(() -> {
-      try (PipedOutputStream outputStream = new PipedOutputStream()) {
-        PipedInputStream inputStream = new PipedInputStream();
-        inputStream.connect(outputStream);
-        addToOutput.accept(service, outputStream);
-      } catch (IOException e) {
-        LOGGER.error(e.getMessage(), e);
-        throw new InternalServerErrorResponse();
-      }
-    });
-
-    context.contentType(mimeType);
-    context.result(completableFuture);
+    try {
+      PipedOutputStream outputStream = new PipedOutputStream();
+      PipedInputStream inputStream = new PipedInputStream(outputStream);
+      context.contentType(mimeType);
+      context.result(inputStream);
+      executorService.submit(() -> {
+        try {
+          addToOutput.accept(service, outputStream);
+        } finally {
+          try {
+            outputStream.close();
+          } catch (IOException e) {
+            LOGGER.error(e.getMessage(), e);
+            throw new InternalServerErrorResponse();
+          }
+        }
+      });
+    } catch (IOException e) {
+      LOGGER.error(e.getMessage(), e);
+      throw new InternalServerErrorResponse();
+    }
   }
 
   private Model getServiceDescription() {

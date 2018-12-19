@@ -18,10 +18,8 @@ package org.wikidata.history.web;
 
 import io.javalin.Javalin;
 import org.apache.commons.cli.*;
-import org.apache.commons.io.IOUtils;
 import org.wikidata.history.sparql.MapDBTripleSource;
 
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -35,23 +33,16 @@ public class Main {
 
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
-    Path indexPath = Paths.get(line.getOptionValue("host", "wd-history-index"));
+    Path indexPath = Paths.get(line.getOptionValue("index", "wd-history-index"));
+
+    String portString = line.getOptionValue("port", System.getenv("PORT"));
+    int port = (portString != null) ? Integer.valueOf(portString) : 7000;
 
     SparqlEndpoint sparqlEndpoint = new SparqlEndpoint(new MapDBTripleSource(indexPath));
     Javalin.create()
-            .enableCorsForOrigin("*")
-            .enableStaticFiles("/public")
-            .get("", ctx -> ctx.html(
-                    IOUtils.toString(Main.class.getResourceAsStream("/index.html"), StandardCharsets.UTF_8)
-                            .replace("{{endpoint}}", line.getOptionValue("host", "localhost"))
-            ))
+            .get("", ctx -> ctx.contentType("text/html").result(Main.class.getResourceAsStream("/index.html")))
             .get("/sparql", sparqlEndpoint::get)
             .post("/sparql", sparqlEndpoint::post)
-            .start(getPort());
-  }
-
-  private static int getPort() {
-    String port = System.getenv("PORT");
-    return (port != null) ? Integer.valueOf(port) : 7000;
+            .start(port);
   }
 }

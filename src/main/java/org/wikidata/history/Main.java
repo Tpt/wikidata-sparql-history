@@ -12,7 +12,6 @@ import org.wikidata.history.sparql.MapDBTripleLoader;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -26,30 +25,39 @@ public class Main {
 
   public static void main(String[] args) throws ParseException, IOException, InterruptedException {
     Options options = new Options();
-    options.addOption("p", "preprocess", true, "Directory to preprocess data from. Useful to build the files that should be then loaded to build the indexes");
-    options.addOption("l", "load", true, "Directory to load data from. Useful to build the indexes");
-    options.addOption("t", "triplesOnly", false, "Load only triples");
+    options.addOption("p", "preprocess", false, "Preprocess the data from Wikidata history XML dump compressed with bz2");
+    options.addOption("l", "load", false, "Build database indexes from the preprocessed data");
     options.addOption("q", "sparql", true, "SPARQL query to execute");
+
+    options.addOption("dd", "dumps-dir", true, "Directory to preprocess data from.");
+    options.addOption("pd", "preprocessed-dir", true, "Directory where preprocessed data are.");
+    options.addOption("id", "index-dir", true, "Directory where index data are.");
+    options.addOption("t", "triplesOnly", false, "Load only triples");
 
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
 
-    Path index = Paths.get("wd-history-index");
+    Path dumpsDir = Paths.get(line.getOptionValue("dumps-dir", "dumps"));
+    Path preprocessedDir = Paths.get(line.getOptionValue("preprocessed-dir", "wd-preprocessed"));
+    Path indexDir = Paths.get(line.getOptionValue("index-dir", "wd-history-index"));
+
     if (line.hasOption("preprocess")) {
       System.setProperty("jdk.xml.entityExpansionLimit", String.valueOf(Integer.MAX_VALUE));
       System.setProperty("jdk.xml.totalEntitySizeLimit", String.valueOf(Integer.MAX_VALUE));
-
+      if (!Files.isDirectory(preprocessedDir)) {
+        Files.createDirectories(preprocessedDir);
+      }
 
       ExecutorService executorService = Executors.newFixedThreadPool(
               Runtime.getRuntime().availableProcessors()
       );
       try (
-              HistoryOutput historyOutput = new HistoryOutput(Paths.get("out"));
-              BufferedWriter log = Files.newBufferedWriter(Paths.get("out/logs.txt"))
+              HistoryOutput historyOutput = new HistoryOutput(preprocessedDir);
+              BufferedWriter log = Files.newBufferedWriter(preprocessedDir.resolve("logs.txt"))
       ) {
         RevisionFileConverter revisionFileConverter = new RevisionFileConverter(historyOutput);
         executorService.invokeAll(
-                Files.walk(Paths.get("."))
+                Files.walk(dumpsDir)
                         .filter(file -> file.toString().endsWith(".bz2"))
                         .map(file -> (Callable<Void>) () -> {
                           try {
@@ -69,23 +77,21 @@ public class Main {
     }
 
     if (line.hasOption("load")) {
-      try {
-        Files.createDirectories(index);
-      } catch (FileAlreadyExistsException e) {
-        //Don't care
+      if (!Files.isDirectory(indexDir)) {
+        Files.createDirectories(indexDir);
       }
       if (!line.hasOption("triplesOnly")) {
-        try (MapDBRevisionLoader loader = new MapDBRevisionLoader(index)) {
-          loader.load(Paths.get(line.getOptionValue("load")));
+        try (MapDBRevisionLoader loader = new MapDBRevisionLoader(indexDir)) {
+          loader.load(preprocessedDir);
         }
       }
-      try (MapDBTripleLoader loader = new MapDBTripleLoader(index)) {
-        loader.load(Paths.get(line.getOptionValue("load")));
+      try (MapDBTripleLoader loader = new MapDBTripleLoader(indexDir)) {
+        loader.load(preprocessedDir);
       }
     }
 
     if (line.hasOption("sparql")) {
-      try (HistoryRepository historyRepository = new HistoryRepository(index)) {
+      try (HistoryRepository historyRepository = new HistoryRepository(indexDir)) {
         historyRepository.getConnection().prepareTupleQuery(line.getOptionValue("sparql"))
                 .evaluate((new SPARQLResultsTSVWriterFactory()).getWriter(System.out));
       }

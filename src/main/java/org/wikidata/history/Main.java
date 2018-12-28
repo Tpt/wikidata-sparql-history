@@ -32,7 +32,8 @@ public class Main {
     options.addOption("dd", "dumps-dir", true, "Directory to preprocess data from.");
     options.addOption("pd", "preprocessed-dir", true, "Directory where preprocessed data are.");
     options.addOption("id", "index-dir", true, "Directory where index data are.");
-    options.addOption("t", "triplesOnly", false, "Load only triples");
+    options.addOption("t", "triples-only", false, "Load only triples");
+    options.addOption("wdt", "wdt-only", false, "Load only wdt: triples");
 
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
@@ -80,12 +81,12 @@ public class Main {
       if (!Files.isDirectory(indexDir)) {
         Files.createDirectories(indexDir);
       }
-      if (!line.hasOption("triplesOnly")) {
+      if (!line.hasOption("triples-only")) {
         try (MapDBRevisionLoader loader = new MapDBRevisionLoader(indexDir)) {
           loader.load(preprocessedDir);
         }
       }
-      try (MapDBTripleLoader loader = new MapDBTripleLoader(indexDir)) {
+      try (MapDBTripleLoader loader = new MapDBTripleLoader(indexDir, line.hasOption("wdt-only"))) {
         loader.load(preprocessedDir);
       }
     }

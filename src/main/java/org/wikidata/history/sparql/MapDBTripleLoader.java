@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
 public final class MapDBTripleLoader implements AutoCloseable {
@@ -26,9 +27,11 @@ public final class MapDBTripleLoader implements AutoCloseable {
   private final MapDBStore store;
   private final MapDBStore.MapDBStringStore stringStore;
   private final NumericValueFactory valueFactory;
+  private final boolean onlyWdt;
 
-  public MapDBTripleLoader(Path path) {
+  public MapDBTripleLoader(Path path, boolean onlyWdt) {
     store = new MapDBStore(path);
+    this.onlyWdt = onlyWdt;
     stringStore = store.newInMemoryStringStore();
     valueFactory = new NumericValueFactory(stringStore);
   }
@@ -70,7 +73,12 @@ public final class MapDBTripleLoader implements AutoCloseable {
   private void loadTriples(Path path, BTreeMap<NumericTriple, long[]> spoIndex, BTreeMap<NumericTriple, long[]> posIndex) throws IOException {
     AtomicLong done = new AtomicLong();
     try (BufferedReader reader = gzipReader(path)) {
-      reader.lines().peek(line -> {
+      Stream<String> lines = reader.lines();
+      if (onlyWdt) {
+        LOGGER.info("Only loading wdt: triples");
+        lines = lines.filter(line -> line.contains(Vocabulary.WDT_NAMESPACE));
+      }
+      lines.peek(line -> {
         long count = done.getAndIncrement();
         if (count % 1_000_000 == 0) {
           LOGGER.info(count + " triples imported");

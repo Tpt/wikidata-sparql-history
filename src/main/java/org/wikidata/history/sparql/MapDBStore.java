@@ -4,12 +4,16 @@ import org.mapdb.*;
 import org.mapdb.serializer.GroupSerializer;
 import org.mapdb.volume.MappedFileVol;
 import org.mapdb.volume.Volume;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 class MapDBStore implements AutoCloseable {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(MapDBStore.class);
   private Path directory;
 
   MapDBStore(Path directory) {
@@ -128,11 +132,16 @@ class MapDBStore implements AutoCloseable {
 
     private Volume openVolume(Path file) {
       DBException.VolumeIOError error = null;
-      for (int i = 0; i < 8; i++) {
+      for (int i = 0; i < 16; i++) {
         try {
           return MappedFileVol.FACTORY.makeVolume(file.toAbsolutePath().toString(), false, 0, Index.PAGE_SHIFT, 0, false);
         } catch (DBException.VolumeIOError e) {
           error = e;
+        }
+        try {
+          TimeUnit.MINUTES.sleep(1);
+        } catch (InterruptedException e) {
+          LOGGER.error(e.getMessage(), e);
         }
       }
       throw error;
@@ -159,11 +168,16 @@ class MapDBStore implements AutoCloseable {
 
     private Volume openVolume(Path file) {
       DBException.VolumeIOError error = null;
-      for (int i = 0; i < 8; i++) {
+      for (int i = 0; i < 16; i++) {
         try {
           return MappedFileVol.FACTORY.makeVolume(file.toAbsolutePath().toString(), true, 0, Index.PAGE_SHIFT, 0, false);
         } catch (DBException.VolumeIOError e) {
           error = e;
+        }
+        try {
+          TimeUnit.SECONDS.sleep(10);
+        } catch (InterruptedException e) {
+          LOGGER.error(e.getMessage(), e);
         }
       }
       throw error;

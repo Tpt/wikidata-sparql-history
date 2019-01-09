@@ -22,3 +22,11 @@ To setup a working endpoint do:
 * Preprocess the dump to get all revision metadata and triples annotated with there insertions and deletions (takes a few days and all your CPU cores): `java -server -jar target/sparql-endpoint-0.1-SNAPSHOT.jar -preprocess`
 * Build database indexes: `java -server -jar target/sparql-endpoint-0.1-SNAPSHOT.jar -load`. You may use the `--wdt-only` argument to only load wdt: triples
 * Start the web server `java -server -classpath target/sparql-endpoint-0.1-SNAPSHOT.jar org.wikidata.history.web.Main`
+
+## License
+
+Copyright (C) 2019 Thomas Pellissier Tanon.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.

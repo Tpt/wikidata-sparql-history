@@ -12,6 +12,38 @@ Warning: This is a work in progress and is not ready yet.
 
 A public endpoint should be available soon. Here are some example of queries:
 
+Number of humans in Wikidata in February 2nd, 2015 at midnight.
+```sparql
+SELECT (COUNT(?item) AS ?count) WHERE {
+  ?rev schema:dateCreated "2015-02-02T00:00:00Z"^^xsd:dateTime ; 
+       hist:globalState ?state .
+  GRAPH ?state {
+    ?item wdt:P31 wd:Q5
+  }
+}
+```
+
+Number of contributors having changed sex or gender values:
+```sparql
+SELECT (COUNT(?user) AS ?count) WHERE {
+  # this is going to only set in ?addOrDel the graphs where a value of wd:P21 is added or removed
+  GRAPH ?addOrDel {
+    ?item wdt:P21 ?value .
+  }
+  ?rev hist:additions|hist:deletions ?addOrDel ;
+       schema:author ?user .
+}
+```
+
+These queries assumes the following prefixes:
+```sparql
+PREFIX schema: <http://schema.org/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX hist: <http://wikiba.se/history/ontology#>
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+```
+
 
 ## Developer documentation
 

@@ -5,12 +5,12 @@ This repository provides a SPARQL endpoint for Wikidata history, allowing to do 
 
 Warning: This is a work in progress and is not ready yet.
 
+[![Build Status](https://travis-ci.org/Tpt/wikidata-sparql-history.svg?branch=master)](https://travis-ci.org/Tpt/wikidata-sparql-history)
+
 
 ## User documentation
 
 A public endpoint should be available soon. Here are some example of queries:
-
-
 
 
 ## Developer documentation

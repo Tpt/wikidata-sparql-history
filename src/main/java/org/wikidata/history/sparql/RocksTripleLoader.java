@@ -1,11 +1,6 @@
 package org.wikidata.history.sparql;
 
 import org.eclipse.rdf4j.rio.ntriples.NTriplesUtil;
-import org.mapdb.BTreeMap;
-import org.mapdb.DB;
-import org.mapdb.DBMaker;
-import org.mapdb.Serializer;
-import org.mapdb.serializer.GroupSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,37 +10,29 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
-public final class MapDBTripleLoader implements AutoCloseable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(MapDBTripleLoader.class);
+public final class RocksTripleLoader implements AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RocksTripleLoader.class);
 
-  private final MapDBStore store;
-  private final MapDBStore.MapDBStringStore stringStore;
+  private final RocksStore store;
   private final NumericValueFactory valueFactory;
   private final boolean onlyWdt;
 
-  public MapDBTripleLoader(Path path, boolean onlyWdt) {
-    store = new MapDBStore(path);
+  public RocksTripleLoader(Path path, boolean onlyWdt) {
+    store = new RocksStore(path, false);
     this.onlyWdt = onlyWdt;
-    stringStore = store.newInMemoryStringStore();
-    valueFactory = new NumericValueFactory(stringStore);
+    valueFactory = new NumericValueFactory(store.getReadWriteStringStore());
   }
 
   public void load(Path directory) throws IOException {
-    try (DB db = DBMaker.memoryDB().make()) {
-      BTreeMap<NumericTriple, long[]> spoIndex = newMemoryTreeMap(db, "spo", NumericTriple.SPOSerializer, Serializer.LONG_ARRAY);
-      BTreeMap<NumericTriple, long[]> posIndex = newMemoryTreeMap(db, "pos", NumericTriple.POSSerializer, Serializer.LONG_ARRAY);
+    RocksStore.Index<long[], long[]> spoIndex = store.spoStatementIndex();
+    RocksStore.Index<long[], long[]> posIndex = store.posStatementIndex();
 
       LOGGER.info("Loading triples");
       loadTriples(directory.resolve("triples.tsv.gz"), spoIndex, posIndex);
-
-      LOGGER.info("Saving string store");
-      store.saveStringStore(stringStore);
 
       try {
         LOGGER.info("Computing P279 closure");
@@ -54,23 +41,16 @@ public final class MapDBTripleLoader implements AutoCloseable {
                 valueFactory.encodeValue(Vocabulary.P279_CLOSURE),
                 spoIndex,
                 posIndex);
-
       } catch (NotSupportedValueException e) {
         // Should never happen
       }
-
-      LOGGER.info("Saving content triples");
-      store.spoStatementIndex().buildFrom(spoIndex);
-      store.posStatementIndex().buildFrom(posIndex);
-      LOGGER.info("Content saving done");
-    }
   }
 
   private BufferedReader gzipReader(Path path) throws IOException {
     return new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(path))));
   }
 
-  private void loadTriples(Path path, BTreeMap<NumericTriple, long[]> spoIndex, BTreeMap<NumericTriple, long[]> posIndex) throws IOException {
+  private void loadTriples(Path path, RocksStore.Index<long[], long[]> spoIndex, RocksStore.Index<long[], long[]> posIndex) throws IOException {
     AtomicLong done = new AtomicLong();
     try (BufferedReader reader = gzipReader(path)) {
       Stream<String> lines = reader.lines();
@@ -105,37 +85,37 @@ public final class MapDBTripleLoader implements AutoCloseable {
     }
   }
 
-  private void computeClosure(long property, long targetProperty, BTreeMap<NumericTriple, long[]> spoIndex, BTreeMap<NumericTriple, long[]> posIndex) {
+  private void computeClosure(long property, long targetProperty, RocksStore.Index<long[], long[]> spoIndex, RocksStore.Index<long[], long[]> posIndex) {
     //We copy everything into the closure
-    entryIterator(posIndex, 0, property, 0)
+    posIndex.longPrefixIterator(new long[]{property})
             .forEachRemaining(entry -> addTriple(spoIndex, posIndex,
-                    entry.getKey().getSubject(),
+                    entry.getKey()[2],
                     targetProperty,
-                    entry.getKey().getObject(),
+                    entry.getKey()[1],
                     entry.getValue()));
 
     //We compute the closure
-    entryIterator(posIndex, 0, targetProperty, 0).forEachRemaining(targetEntry -> {
-      NumericTriple targetTriple = targetEntry.getKey();
+    posIndex.longPrefixIterator(new long[]{targetProperty}).forEachRemaining(targetEntry -> {
+      long[] targetTriple = targetEntry.getKey();
       long[] targetRange = targetEntry.getValue();
-      entryIterator(posIndex, 0, targetProperty, targetTriple.getSubject()).forEachRemaining(leftEntry -> {
+      posIndex.longPrefixIterator(new long[]{targetProperty, targetTriple[2]}).forEachRemaining(leftEntry -> {
         long[] range = LongRangeUtils.intersection(targetRange, leftEntry.getValue());
         if (range != null) {
           addTriple(spoIndex, posIndex,
-                  leftEntry.getKey().getSubject(),
+                  leftEntry.getKey()[2],
                   targetProperty,
-                  targetTriple.getObject(),
+                  targetTriple[1],
                   range
           );
         }
       });
-      entryIterator(spoIndex, targetTriple.getObject(), targetProperty, 0).forEachRemaining(rightEntry -> {
+      spoIndex.longPrefixIterator(new long[]{targetTriple[1], targetProperty}).forEachRemaining(rightEntry -> {
         long[] range = LongRangeUtils.intersection(targetRange, rightEntry.getValue());
         if (range != null) {
           addTriple(spoIndex, posIndex,
-                  targetTriple.getSubject(),
+                  targetTriple[2],
                   targetProperty,
-                  rightEntry.getKey().getObject(),
+                  rightEntry.getKey()[2],
                   range
           );
         }
@@ -143,31 +123,20 @@ public final class MapDBTripleLoader implements AutoCloseable {
     });
   }
 
-  private static <K, V> Iterator<Map.Entry<K, V>> entryIterator(BTreeMap<K, V> map, K prefix) {
-    return map.entryIterator(prefix, true, map.getKeySerializer().nextValue(prefix), false);
-  }
-
-  private static <V> Iterator<Map.Entry<NumericTriple, V>> entryIterator(BTreeMap<NumericTriple, V> map, long subject, long predicate, long object) {
-    return entryIterator(map, new NumericTriple(subject, predicate, object));
-  }
-
-  private static void addTriple(BTreeMap<NumericTriple, long[]> spoIndex, BTreeMap<NumericTriple, long[]> posIndex, long subject, long predicate, long object, long[] range) {
+  private static void addTriple(RocksStore.Index<long[], long[]> spoIndex, RocksStore.Index<long[], long[]> posIndex, long subject, long predicate, long object, long[] range) {
     if (range == null) {
       throw new IllegalArgumentException("Triple without revision range");
     }
-    NumericTriple newTriple = new NumericTriple(subject, predicate, object);
-    long[] existingRange = spoIndex.get(newTriple);
+    long[] spoTriple = new long[]{subject, predicate, object};
+    long[] posTriple = new long[]{predicate, object, subject};
+
+    long[] existingRange = spoIndex.get(spoTriple);
     if (existingRange != null) {
       range = LongRangeUtils.union(existingRange, range);
     }
-    spoIndex.put(newTriple, range);
-    posIndex.put(newTriple, range);
+    spoIndex.put(spoTriple, range);
+    posIndex.put(posTriple, range);
   }
-
-  private <K, V> BTreeMap<K, V> newMemoryTreeMap(DB db, String name, GroupSerializer<K> keySerializer, GroupSerializer<V> valueSerializer) {
-    return db.treeMap(name).keySerializer(keySerializer).valueSerializer(valueSerializer).createOrOpen();
-  }
-
   @Override
   public void close() {
     valueFactory.close();

@@ -168,10 +168,8 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
   @Override
   public IRI createIRI(String namespace, String localName) {
-    if (Vocabulary.WD_NAMESPACE.equals(namespace)) {
-      if (localName.isEmpty()) {
-        return super.createIRI(namespace);
-      } else if (localName.charAt(0) == 'Q') {
+    if (Vocabulary.WD_NAMESPACE.equals(namespace) && !localName.isEmpty()) {
+      if (localName.charAt(0) == 'Q') {
         return new ItemIRI(Long.parseLong(localName.substring(1)));
       } else if (localName.charAt(0) == 'P') {
         return new PropertyIRI(Long.parseLong(localName.substring(1)), PropertyType.ENTITY);

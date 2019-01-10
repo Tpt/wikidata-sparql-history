@@ -7,8 +7,8 @@ import org.slf4j.LoggerFactory;
 import org.wikidata.history.preprocessor.HistoryOutput;
 import org.wikidata.history.preprocessor.RevisionFileConverter;
 import org.wikidata.history.sparql.HistoryRepository;
-import org.wikidata.history.sparql.MapDBRevisionLoader;
-import org.wikidata.history.sparql.MapDBTripleLoader;
+import org.wikidata.history.sparql.RocksRevisionLoader;
+import org.wikidata.history.sparql.RocksTripleLoader;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -82,11 +82,11 @@ public class Main {
         Files.createDirectories(indexDir);
       }
       if (!line.hasOption("triples-only")) {
-        try (MapDBRevisionLoader loader = new MapDBRevisionLoader(indexDir)) {
+        try (RocksRevisionLoader loader = new RocksRevisionLoader(indexDir)) {
           loader.load(preprocessedDir);
         }
       }
-      try (MapDBTripleLoader loader = new MapDBTripleLoader(indexDir, line.hasOption("wdt-only"))) {
+      try (RocksTripleLoader loader = new RocksTripleLoader(indexDir, line.hasOption("wdt-only"))) {
         loader.load(preprocessedDir);
       }
     }

@@ -18,7 +18,7 @@ package org.wikidata.history.web;
 
 import io.javalin.Javalin;
 import org.apache.commons.cli.*;
-import org.wikidata.history.sparql.MapDBTripleSource;
+import org.wikidata.history.sparql.RocksTripleSource;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,7 +38,7 @@ public class Main {
     String portString = line.getOptionValue("port", System.getenv("PORT"));
     int port = (portString != null) ? Integer.valueOf(portString) : 7000;
 
-    SparqlEndpoint sparqlEndpoint = new SparqlEndpoint(new MapDBTripleSource(indexPath));
+    SparqlEndpoint sparqlEndpoint = new SparqlEndpoint(new RocksTripleSource(indexPath));
     Javalin.create()
             .get("", ctx -> ctx.contentType("text/html").result(Main.class.getResourceAsStream("/index.html")))
             .get("/sparql", sparqlEndpoint::get)

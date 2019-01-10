@@ -16,46 +16,38 @@ import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Stream;
 
-public final class MapDBTripleSource implements TripleSource, AutoCloseable {
+public final class RocksTripleSource implements TripleSource, AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger("tripleSource");
   private static final CloseableIteration<Statement, QueryEvaluationException> EMPTY_ITERATION = new EmptyIteration<>();
   private static final long[] EMPTY_ARRAY = new long[]{};
 
-  private final MapDBStore store;
-  private final MapDBStore.IndexReader<Long, Long> revisionDateIndex;
-  private final MapDBStore.IndexReader<Long, Long> parentRevisionIndex;
-  private final MapDBStore.IndexReader<Long, Long> childRevisionIndex;
-  private final MapDBStore.IndexReader<Long, Long> revisionTopicIndex;
-  private final MapDBStore.IndexReader<Long, long[]> topicRevisionsIndex;
-  private final MapDBStore.IndexReader<Long, String> revisionContributorIndex;
-  private final MapDBStore.IndexReader<NumericTriple, long[]> spoStatementIndex;
-  private final MapDBStore.IndexReader<NumericTriple, long[]> posStatementIndex;
+  private final RocksStore store;
+  private final RocksStore.Index<Long, Long> revisionDateIndex;
+  private final RocksStore.Index<Long, Long> parentRevisionIndex;
+  private final RocksStore.Index<Long, Long> childRevisionIndex;
+  private final RocksStore.Index<Long, Long> revisionTopicIndex;
+  private final RocksStore.Index<Long, long[]> topicRevisionsIndex;
+  private final RocksStore.Index<Long, String> revisionContributorIndex;
+  private final RocksStore.Index<long[], long[]> spoStatementIndex;
+  private final RocksStore.Index<long[], long[]> posStatementIndex;
   private final NumericValueFactory valueFactory;
 
-  public MapDBTripleSource(Path path) {
-    store = new MapDBStore(path);
-    revisionDateIndex = store.revisionDateIndex().newReader();
-    parentRevisionIndex = store.parentRevisionIndex().newReader();
-    childRevisionIndex = store.childRevisionIndex().newReader();
-    revisionTopicIndex = store.revisionTopicIndex().newReader();
-    topicRevisionsIndex = store.topicRevisionIndex().newReader();
-    revisionContributorIndex = store.revisionContributorIndex().newReader();
-    spoStatementIndex = store.spoStatementIndex().newReader();
-    posStatementIndex = store.posStatementIndex().newReader();
-    valueFactory = new NumericValueFactory(store.openStringStore());
+  public RocksTripleSource(Path path) {
+    store = new RocksStore(path, true);
+    revisionDateIndex = store.revisionDateIndex();
+    parentRevisionIndex = store.parentRevisionIndex();
+    childRevisionIndex = store.childRevisionIndex();
+    revisionTopicIndex = store.revisionTopicIndex();
+    topicRevisionsIndex = store.topicRevisionIndex();
+    revisionContributorIndex = store.revisionContributorIndex();
+    spoStatementIndex = store.spoStatementIndex();
+    posStatementIndex = store.posStatementIndex();
+    valueFactory = new NumericValueFactory(store.getReadOnlyStringStore());
   }
 
   @Override
   public void close() {
     valueFactory.close();
-    revisionDateIndex.close();
-    parentRevisionIndex.close();
-    childRevisionIndex.close();
-    revisionTopicIndex.close();
-    topicRevisionsIndex.close();
-    revisionContributorIndex.close();
-    spoStatementIndex.close();
-    posStatementIndex.close();
     store.close();
   }
 
@@ -234,18 +226,22 @@ public final class MapDBTripleSource implements TripleSource, AutoCloseable {
           if (pred == null) {
             throw new QueryEvaluationException("NumericTriple patterns with not subject and predicate are not supported");
           } else {
-            return new DirectStatementIteration(posStatementIndex.entryIterator(new NumericTriple(
-                    0,
-                    valueFactory.encodeValue(pred),
-                    (obj == null) ? 0 : valueFactory.encodeValue(obj)
-            )), revisionIris);
+            long[] prefix = (obj == null)
+                    ? new long[]{valueFactory.encodeValue(pred)}
+                    : new long[]{valueFactory.encodeValue(pred), valueFactory.encodeValue(obj)};
+            return new FlatMapClosableIteration<>(posStatementIndex.longPrefixIteration(
+                    prefix,
+                    (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatPosTriple(triple, revisionIri)).iterator()));
           }
         } else {
-          CloseableIteration<Statement, QueryEvaluationException> result = new DirectStatementIteration(spoStatementIndex.entryIterator(new NumericTriple(
-                  valueFactory.encodeValue(subj),
-                  (pred == null) ? 0 : valueFactory.encodeValue(pred),
-                  (pred == null || obj == null) ? 0 : valueFactory.encodeValue(obj)
-          )), revisionIris);
+          long[] prefix = (pred == null)
+                  ? new long[]{valueFactory.encodeValue(subj)}
+                  : (obj == null)
+                  ? new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)}
+                  : new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred), valueFactory.encodeValue(obj)};
+          CloseableIteration<Statement, QueryEvaluationException> result = new FlatMapClosableIteration<>(spoStatementIndex.longPrefixIteration(
+                  prefix,
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatSpoTriple(triple, revisionIri)).iterator()));
           if (pred == null && obj != null) {
             return new FilterIteration<Statement, QueryEvaluationException>(result) {
               @Override
@@ -298,17 +294,47 @@ public final class MapDBTripleSource implements TripleSource, AutoCloseable {
     return Arrays.stream(contexts).map(this::convertRevisionIRI).toArray(NumericValueFactory.RevisionIRI[]::new);
   }
 
-  private Statement formatTriple(NumericTriple triple, Resource context) {
+  private Statement formatSpoTriple(long[] triple, Resource context) {
     try {
       return valueFactory.createStatement(
-              (Resource) valueFactory.createValue(triple.getSubject()),
-              (IRI) valueFactory.createValue(triple.getPredicate()),
-              valueFactory.createValue(triple.getObject()),
+              (Resource) valueFactory.createValue(triple[0]),
+              (IRI) valueFactory.createValue(triple[1]),
+              valueFactory.createValue(triple[2]),
               context
       );
     } catch (NotSupportedValueException e) {
       throw new QueryEvaluationException(e);
     }
+  }
+
+  private Statement formatPosTriple(long[] triple, Resource context) {
+    try {
+      return valueFactory.createStatement(
+              (Resource) valueFactory.createValue(triple[2]),
+              (IRI) valueFactory.createValue(triple[0]),
+              valueFactory.createValue(triple[1]),
+              context
+      );
+    } catch (NotSupportedValueException e) {
+      throw new QueryEvaluationException(e);
+    }
+  }
+
+  private Stream<NumericValueFactory.RevisionIRI> revisionsInExpected(long[] actualRevisions, NumericValueFactory.RevisionIRI[] expectedRevisionRange) {
+    return (expectedRevisionRange == null)
+            ? boundRevisionOfRange(actualRevisions)
+            : Arrays.stream(expectedRevisionRange).filter(revisionIri -> isInRanges(revisionIri, actualRevisions));
+  }
+
+  private Stream<NumericValueFactory.RevisionIRI> boundRevisionOfRange(long[] revisionRange) {
+    List<NumericValueFactory.RevisionIRI> graphs = new ArrayList<>(revisionRange.length);
+    for (int i = 0; i < revisionRange.length; i += 2) {
+      graphs.add(valueFactory.createRevisionIRI(revisionRange[i], Vocabulary.SnapshotType.ADDITIONS));
+      if (revisionRange[i + 1] != Long.MAX_VALUE) {
+        graphs.add(valueFactory.createRevisionIRI(revisionRange[i + 1], Vocabulary.SnapshotType.DELETIONS));
+      }
+    }
+    return graphs.stream();
   }
 
   private NumericValueFactory.RevisionIRI convertRevisionIRI(Value revisionIRI) {
@@ -347,88 +373,38 @@ public final class MapDBTripleSource implements TripleSource, AutoCloseable {
     }
   }
 
-  private abstract static class MultipleConvertingIteration<S, T, X extends Exception> extends AbstractCloseableIteration<T, X> {
-    private final Iteration<? extends S, ? extends X> iter;
-    private Iterator<? extends T> current;
+  private static class FlatMapClosableIteration<E, X extends Exception> implements CloseableIteration<E, X> {
+    private final CloseableIteration<Iterator<E>, X> iter;
+    private Iterator<E> current;
 
-    MultipleConvertingIteration(Iteration<? extends S, ? extends X> iter) {
+    FlatMapClosableIteration(CloseableIteration<Iterator<E>, X> iter) {
       this.iter = iter;
       current = Collections.emptyIterator();
     }
 
-    protected abstract Iterator<? extends T> convert(S var1) throws X;
-
+    @Override
     public boolean hasNext() throws X {
-      if (isClosed()) {
-        return false;
-      } else {
-        while (!current.hasNext() && iter.hasNext()) {
-          current = convert(iter.next());
-        }
-        boolean result = current.hasNext();
-        if (!result) {
-          close();
-        }
-        return result;
+      while (!current.hasNext() && iter.hasNext()) {
+        current = iter.next();
       }
-    }
-
-    public T next() throws X {
-      if (isClosed()) {
-        throw new NoSuchElementException("The iteration has been closed.");
-      } else {
-        while (!current.hasNext()) {
-          current = convert(iter.next());
-        }
-        return current.next();
-      }
-    }
-
-    public void remove() throws X {
-      if (isClosed()) {
-        throw new IllegalStateException("The iteration has been closed.");
-      } else {
-        iter.remove();
-      }
-    }
-
-    protected void handleClose() throws X {
-      try {
-        super.handleClose();
-      } finally {
-        Iterations.closeCloseable(iter);
-      }
-    }
-  }
-
-  private final class DirectStatementIteration extends MultipleConvertingIteration<Map.Entry<NumericTriple, long[]>, Statement, QueryEvaluationException> {
-    private NumericValueFactory.RevisionIRI[] revisionIris;
-
-    DirectStatementIteration(Iterator<Map.Entry<NumericTriple, long[]>> iter, NumericValueFactory.RevisionIRI[] revisionIris) {
-      super(new CloseableIteratorIteration<>(iter));
-      this.revisionIris = revisionIris;
+      return current.hasNext();
     }
 
     @Override
-    protected Iterator<Statement> convert(Map.Entry<NumericTriple, long[]> entry) throws QueryEvaluationException {
-      return findRevisions(entry.getValue()).map(revisionIri -> formatTriple(entry.getKey(), revisionIri)).iterator();
-    }
-
-    private Stream<NumericValueFactory.RevisionIRI> findRevisions(long[] statementRevisions) {
-      return (revisionIris == null)
-              ? defaultGraphs(statementRevisions)
-              : Arrays.stream(revisionIris).filter(revisionIri -> isInRanges(revisionIri, statementRevisions));
-    }
-
-    private Stream<NumericValueFactory.RevisionIRI> defaultGraphs(long[] statementRevisions) {
-      List<NumericValueFactory.RevisionIRI> graphs = new ArrayList<>(statementRevisions.length);
-      for (int i = 0; i < statementRevisions.length; i += 2) {
-        graphs.add(valueFactory.createRevisionIRI(statementRevisions[i], Vocabulary.SnapshotType.ADDITIONS));
-        if (statementRevisions[i + 1] != Long.MAX_VALUE) {
-          graphs.add(valueFactory.createRevisionIRI(statementRevisions[i + 1], Vocabulary.SnapshotType.DELETIONS));
+    public E next() throws X {
+        while (!current.hasNext()) {
+          current = iter.next();
         }
+        return current.next();
       }
-      return graphs.stream();
+
+    @Override
+    public void remove() {
+    }
+
+    @Override
+    public void close() throws X {
+      iter.close();
     }
   }
 }

@@ -25,7 +25,7 @@ import static org.eclipse.rdf4j.query.QueryLanguage.SPARQL;
 public class HistoryRepository extends AbstractRepository implements AutoCloseable {
 
   private Path indexPath;
-  private MapDBTripleSource tripleSource;
+  private RocksTripleSource tripleSource;
   private QueryParser queryParser;
   private QueryPreparer queryPreparer;
 
@@ -39,7 +39,7 @@ public class HistoryRepository extends AbstractRepository implements AutoCloseab
 
   @Override
   protected void initializeInternal() throws RepositoryException {
-    tripleSource = new MapDBTripleSource(indexPath);
+    tripleSource = new RocksTripleSource(indexPath);
     queryParser = new SPARQLParser();
     queryPreparer = new SimpleQueryPreparer(tripleSource);
   }

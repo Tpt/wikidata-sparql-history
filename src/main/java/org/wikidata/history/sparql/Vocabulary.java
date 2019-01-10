@@ -22,14 +22,15 @@ public final class Vocabulary {
   public static final IRI SCHEMA_DATE_CREATED = VALUE_FACTORY.createIRI("http://schema.org/dateCreated");
   public static final IRI SCHEMA_IS_BASED_ON = VALUE_FACTORY.createIRI("http://schema.org/isBasedOn");
 
-  public static final IRI HISTORY_ADDITION = VALUE_FACTORY.createIRI("http://wikiba.se/history/ontology#addition");
-  public static final IRI HISTORY_DELETION = VALUE_FACTORY.createIRI("http://wikiba.se/history/ontology#deletion");
-  public static final IRI HISTORY_ADDITIONS = VALUE_FACTORY.createIRI("http://wikiba.se/history/ontology#additions");
-  public static final IRI HISTORY_DELETIONS = VALUE_FACTORY.createIRI("http://wikiba.se/history/ontology#deletions");
-  public static final IRI HISTORY_PREVIOUS_REVISION = VALUE_FACTORY.createIRI("http://wikiba.se/history/ontology#previousRevision");
-  public static final IRI HISTORY_NEXT_REVISION = VALUE_FACTORY.createIRI("http://wikiba.se/history/ontology#nextRevision");
-  public static final IRI HISTORY_GLOBAL_STATE = VALUE_FACTORY.createIRI("http://wikiba.se/history/ontology#globalState");
-  public static final IRI HISTORY_REVISION_ID = VALUE_FACTORY.createIRI("http://wikiba.se/history/ontology#revisionId");
+  public static final String WBHISTORY_NAMESPACE = "http://wikiba.se/history/ontology#";
+  public static final IRI HISTORY_ADDITION = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "addition");
+  public static final IRI HISTORY_DELETION = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "deletion");
+  public static final IRI HISTORY_ADDITIONS = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "additions");
+  public static final IRI HISTORY_DELETIONS = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "deletions");
+  public static final IRI HISTORY_PREVIOUS_REVISION = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "previousRevision");
+  public static final IRI HISTORY_NEXT_REVISION = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "nextRevision");
+  public static final IRI HISTORY_GLOBAL_STATE = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "globalState");
+  public static final IRI HISTORY_REVISION_ID = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "revisionId");
 
   public static final String WD_NAMESPACE = "http://www.wikidata.org/entity/";
   public static final String WDS_NAMESPACE = "http://www.wikidata.org/entity/statement/";
@@ -52,7 +53,7 @@ public final class Vocabulary {
 
   public static final IRI CURRENT_GLOBAL_STATE = VALUE_FACTORY.createIRI(REVISION_GLOBAL_STATE_NAMESPACE, Long.toString(Long.MAX_VALUE / 256));
 
-  static final IRI P279_CLOSURE = VALUE_FACTORY.createIRI("http://wikiba.se/history/ontology#p279Closure");
+  static final IRI P279_CLOSURE = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "p279Closure");
 
   private static final Set<String> REVISION_NAMESPACES = Sets.newHashSet(REVISION_NAMESPACE, REVISION_GLOBAL_STATE_NAMESPACE, REVISION_ADDITIONS_NAMESPACE, REVISION_DELETIONS_NAMESPACE);
 

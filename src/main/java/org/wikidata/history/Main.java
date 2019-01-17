@@ -81,13 +81,25 @@ public class Main {
       if (!Files.isDirectory(indexDir)) {
         Files.createDirectories(indexDir);
       }
+
       if (!line.hasOption("triples-only")) {
-        try (RocksRevisionLoader loader = new RocksRevisionLoader(indexDir)) {
-          loader.load(preprocessedDir);
+        Path revisionsFile = preprocessedDir.resolve("revisions.tsv.gz");
+        if (Files.exists(revisionsFile)) {
+          try (RocksRevisionLoader loader = new RocksRevisionLoader(indexDir)) {
+            loader.load(revisionsFile);
+          }
+        } else {
+          LOGGER.warn("Skipping revisions loading " + revisionsFile + " does not exists");
         }
       }
-      try (RocksTripleLoader loader = new RocksTripleLoader(indexDir, line.hasOption("wdt-only"))) {
-        loader.load(preprocessedDir);
+
+      Path triplesFile = preprocessedDir.resolve("triples.tsv.gz");
+      if (Files.exists(triplesFile)) {
+        try (RocksTripleLoader loader = new RocksTripleLoader(indexDir, line.hasOption("wdt-only"))) {
+          loader.load(triplesFile);
+        }
+      } else {
+        LOGGER.warn("Skipping revisions loading " + triplesFile + " does not exists");
       }
     }
 

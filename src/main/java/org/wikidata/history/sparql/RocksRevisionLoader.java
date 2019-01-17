@@ -25,15 +25,7 @@ public final class RocksRevisionLoader implements AutoCloseable {
     store = new RocksStore(path, false);
   }
 
-  public void load(Path directory) throws IOException {
-    loadRevisions(directory.resolve("revisions.tsv.gz"));
-  }
-
-  private BufferedReader gzipReader(Path path) throws IOException {
-    return new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(path))));
-  }
-
-  private void loadRevisions(Path path) throws IOException {
+  public void load(Path file) throws IOException {
     RocksStore.Index<Long, Long> revisionDateOutput = store.revisionDateIndex();
     RocksStore.Index<Long, Long> parentRevisionOutput = store.parentRevisionIndex();
     RocksStore.Index<Long, Long> childRevisionOutput = store.childRevisionIndex();
@@ -41,7 +33,7 @@ public final class RocksRevisionLoader implements AutoCloseable {
     RocksStore.Index<Long, long[]> topicRevisionsOutput = store.topicRevisionIndex();
     RocksStore.Index<Long, String> revisionContributorOutput = store.revisionContributorIndex();
 
-    try (BufferedReader reader = gzipReader(path)) {
+    try (BufferedReader reader = gzipReader(file)) {
       reader.lines().parallel().forEach(line -> {
         String[] parts = line.split("\t");
         long revisionId = Long.parseLong(parts[0]);
@@ -69,6 +61,10 @@ public final class RocksRevisionLoader implements AutoCloseable {
         revisionContributorOutput.put(revisionId, contributor);
       });
     }
+  }
+
+  private BufferedReader gzipReader(Path path) throws IOException {
+    return new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(path))));
   }
 
   @Override

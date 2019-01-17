@@ -27,12 +27,12 @@ public final class RocksTripleLoader implements AutoCloseable {
     valueFactory = new NumericValueFactory(store.getReadWriteStringStore());
   }
 
-  public void load(Path directory) throws IOException {
+  public void load(Path file) throws IOException {
     RocksStore.Index<long[], long[]> spoIndex = store.spoStatementIndex();
     RocksStore.Index<long[], long[]> posIndex = store.posStatementIndex();
 
       LOGGER.info("Loading triples");
-      loadTriples(directory.resolve("triples.tsv.gz"), spoIndex, posIndex);
+    loadTriples(file, spoIndex, posIndex);
 
       try {
         LOGGER.info("Computing P279 closure");

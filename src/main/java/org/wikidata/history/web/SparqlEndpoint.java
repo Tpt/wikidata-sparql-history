@@ -2,7 +2,9 @@ package org.wikidata.history.web;
 
 import io.javalin.BadRequestResponse;
 import io.javalin.Context;
+import io.javalin.HttpResponseException;
 import io.javalin.InternalServerErrorResponse;
+import io.javalin.core.util.Header;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.eclipse.rdf4j.common.lang.FileFormat;
@@ -150,7 +152,7 @@ class SparqlEndpoint {
     List<String> accepted = writerRegistry.getKeys().stream().flatMap(k -> k.getMIMETypes().stream()).collect(Collectors.toList());
     String mimeType;
     try {
-      mimeType = ContentNegotiation.negotiateAccept(context.header("accept"), accepted)
+      mimeType = ContentNegotiation.negotiateAccept(context.header(Header.ACCEPT), accepted)
               .orElseThrow(() -> new NotAcceptableResponse("No acceptable result format found. Accepted format are: " + accepted.toString()));
     } catch (IllegalArgumentException e) {
       throw new BadRequestResponse(e.getMessage());
@@ -173,12 +175,19 @@ class SparqlEndpoint {
       executorService.submit(() -> {
         try {
           addToOutput.accept(service, outputStream);
+        } catch (HttpResponseException e) {
+          try {
+            context.status(e.getStatus());
+            context.contentType("text/plain");
+            outputStream.write(e.getMessage().getBytes());
+          } catch (IOException e1) {
+            LOGGER.error(e.getMessage(), e);
+          }
         } finally {
           try {
             outputStream.close();
           } catch (IOException e) {
             LOGGER.error(e.getMessage(), e);
-            throw new InternalServerErrorResponse();
           }
         }
       });

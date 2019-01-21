@@ -8,7 +8,6 @@ import org.wikidata.history.preprocessor.HistoryOutput;
 import org.wikidata.history.preprocessor.RevisionFileConverter;
 import org.wikidata.history.sparql.HistoryRepository;
 import org.wikidata.history.sparql.RocksRevisionLoader;
-import org.wikidata.history.sparql.RocksStore;
 import org.wikidata.history.sparql.RocksTripleLoader;
 
 import java.io.BufferedWriter;
@@ -28,14 +27,12 @@ public class Main {
     Options options = new Options();
     options.addOption("p", "preprocess", false, "Preprocess the data from Wikidata history XML dump compressed with bz2");
     options.addOption("l", "load", false, "Build database indexes from the preprocessed data");
-    options.addOption("c", "compact", false, "Compacts the database indexes. Always executed after a load");
     options.addOption("q", "sparql", true, "SPARQL query to execute");
 
     options.addOption("dd", "dumps-dir", true, "Directory to preprocess data from.");
     options.addOption("pd", "preprocessed-dir", true, "Directory where preprocessed data are.");
     options.addOption("id", "index-dir", true, "Directory where index data are.");
     options.addOption("t", "triples-only", false, "Load only triples");
-    options.addOption("wdt", "wdt-only", false, "Load only wdt: triples");
 
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
@@ -97,17 +94,11 @@ public class Main {
 
       Path triplesFile = preprocessedDir.resolve("triples.tsv.gz");
       if (Files.exists(triplesFile)) {
-        try (RocksTripleLoader loader = new RocksTripleLoader(indexDir, line.hasOption("wdt-only"))) {
+        try (RocksTripleLoader loader = new RocksTripleLoader(indexDir)) {
           loader.load(triplesFile);
         }
       } else {
         LOGGER.warn("Skipping revisions loading " + triplesFile + " does not exists");
-      }
-    }
-
-    if (line.hasOption("load") || line.hasOption("compact")) {
-      try (RocksStore store = new RocksStore(indexDir, false)) {
-        store.compact();
       }
     }
 

@@ -11,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
 public final class RocksTripleLoader implements AutoCloseable {
@@ -19,11 +18,9 @@ public final class RocksTripleLoader implements AutoCloseable {
 
   private final RocksStore store;
   private final NumericValueFactory valueFactory;
-  private final boolean onlyWdt;
 
-  public RocksTripleLoader(Path path, boolean onlyWdt) {
+  public RocksTripleLoader(Path path) {
     store = new RocksStore(path, false);
-    this.onlyWdt = onlyWdt;
     valueFactory = new NumericValueFactory(store.getReadWriteStringStore());
   }
 
@@ -55,12 +52,7 @@ public final class RocksTripleLoader implements AutoCloseable {
   private void loadTriples(Path path, RocksStore.Index<long[], long[]> spoIndex, RocksStore.Index<long[], long[]> posIndex, RocksStore.Index<long[], long[]> ospIndex) throws IOException {
     AtomicLong done = new AtomicLong();
     try (BufferedReader reader = gzipReader(path)) {
-      Stream<String> lines = reader.lines();
-      if (onlyWdt) {
-        LOGGER.info("Only loading wdt: triples");
-        lines = lines.filter(line -> line.contains(Vocabulary.WDT_NAMESPACE));
-      }
-      lines.peek(line -> {
+      reader.lines().parallel().peek(line -> {
         long count = done.getAndIncrement();
         if (count % 1_000_000 == 0) {
           LOGGER.info(count + " triples imported");
@@ -85,6 +77,9 @@ public final class RocksTripleLoader implements AutoCloseable {
         }
       });
     }
+
+    System.out.println("Compacting store");
+    store.compact();
   }
 
   private void computeClosure(long property, long targetProperty, RocksStore.Index<long[], long[]> spoIndex, RocksStore.Index<long[], long[]> posIndex, RocksStore.Index<long[], long[]> ospIndex) {

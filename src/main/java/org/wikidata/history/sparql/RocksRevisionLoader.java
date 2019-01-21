@@ -61,6 +61,9 @@ public final class RocksRevisionLoader implements AutoCloseable {
         revisionContributorOutput.put(revisionId, contributor);
       });
     }
+
+    System.out.println("Compacting store");
+    store.compact();
   }
 
   private BufferedReader gzipReader(Path path) throws IOException {

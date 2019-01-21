@@ -321,7 +321,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     CloseableIteration<Statement, QueryEvaluationException> getStatements(Resource subj, Value obj) {
       if (subj == null) {
         if (obj == null) {
-          return EMPTY_ITERATION; //TODO
+          return getStatements();
         }
         NumericValueFactory.RevisionIRI objRevision = convertRevisionIRINullable(obj);
         if (objRevision == null) {
@@ -345,6 +345,8 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
       }
     }
 
+    abstract CloseableIteration<Statement, QueryEvaluationException> getStatements();
+
     abstract CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubject(NumericValueFactory.RevisionIRI subj);
 
     abstract CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubjectObject(NumericValueFactory.RevisionIRI subj, NumericValueFactory.RevisionIRI obj);
@@ -360,6 +362,14 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
       super(predicate);
       this.subjType = subjType;
       this.objType = objType;
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatements() {
+      return revisionTopicIndex.longPrefixIteration(new long[]{}, (key, value) -> {
+        NumericValueFactory.RevisionIRI rev = valueFactory.createRevisionIRI(key);
+        return valueFactory.createStatement(rev, getPredicate(), rev.withSnapshotType(objType));
+      });
     }
 
     @Override
@@ -391,7 +401,10 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subjRevision, Value obj) {
       if (subjRevision == null) {
         if (obj == null) {
-          return EMPTY_ITERATION; //TODO
+          return revisionTopicIndex.longPrefixIteration(new long[]{}, (key, value) -> {
+            NumericValueFactory.RevisionIRI rev = valueFactory.createRevisionIRI(key);
+            return valueFactory.createStatement(rev, getPredicate(), valueFactory.createLiteral(rev.getRevisionId()));
+          });
         } else if (obj instanceof Literal) {
           return toIteration(valueFactory.createRevisionIRI(((Literal) obj).longValue()), getPredicate(), obj);
         } else {
@@ -415,6 +428,14 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     }
 
     @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatements() {
+      return revisionTopicIndex.longPrefixIteration(new long[]{}, (key, value) -> {
+        NumericValueFactory.RevisionIRI rev = valueFactory.createRevisionIRI(key);
+        return valueFactory.createStatement(rev, getPredicate(), rev.previousRevision());
+      });
+    }
+
+    @Override
     CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubject(NumericValueFactory.RevisionIRI subj) {
       return toIteration(subj, getPredicate(), subj.previousRevision());
     }
@@ -433,6 +454,14 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   private final class NextRevisionMagicPredicate extends BetweenRevisionsMagicPredicate {
     NextRevisionMagicPredicate() {
       super(Vocabulary.HISTORY_NEXT_REVISION);
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatements() {
+      return revisionTopicIndex.longPrefixIteration(new long[]{}, (key, value) -> {
+        NumericValueFactory.RevisionIRI rev = valueFactory.createRevisionIRI(key);
+        return valueFactory.createStatement(rev, getPredicate(), rev.nextRevision());
+      });
     }
 
     @Override
@@ -545,6 +574,13 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   private final class ParentRevisionMagicPredicate extends BetweenRevisionsMagicPredicate {
     ParentRevisionMagicPredicate() {
       super(Vocabulary.SCHEMA_IS_BASED_ON);
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatements() {
+      return parentRevisionIndex.longPrefixIteration(new long[]{}, (key, value) ->
+              valueFactory.createStatement(valueFactory.createRevisionIRI(key), getPredicate(), valueFactory.createRevisionIRI(value))
+      );
     }
 
     @Override

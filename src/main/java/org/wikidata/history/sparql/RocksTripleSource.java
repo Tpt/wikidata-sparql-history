@@ -1,10 +1,7 @@
 package org.wikidata.history.sparql;
 
 
-import org.eclipse.rdf4j.common.iteration.CloseableIteration;
-import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
-import org.eclipse.rdf4j.common.iteration.EmptyIteration;
-import org.eclipse.rdf4j.common.iteration.SingletonIteration;
+import org.eclipse.rdf4j.common.iteration.*;
 import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
@@ -16,6 +13,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class RocksTripleSource implements TripleSource, AutoCloseable {
@@ -35,6 +33,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   private final RocksStore.Index<long[], long[]> posStatementIndex;
   private final RocksStore.Index<long[], long[]> ospStatementIndex;
   private final NumericValueFactory valueFactory;
+  private final Map<IRI, MagicPredicate> magicPredicates = new HashMap<>();
 
   public RocksTripleSource(Path path) {
     store = new RocksStore(path, true);
@@ -49,6 +48,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     posStatementIndex = store.posStatementIndex();
     ospStatementIndex = store.ospStatementIndex();
     valueFactory = new NumericValueFactory(store.getReadOnlyStringStore());
+    registerMagicPredicates();
   }
 
   @Override
@@ -62,248 +62,83 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     return valueFactory;
   }
 
+  private void registerMagicPredicates() {
+    MagicPredicate[] predicates = new MagicPredicate[]{
+            new RevisionsStatesConverter(Vocabulary.HISTORY_GLOBAL_STATE, Vocabulary.SnapshotType.NONE, Vocabulary.SnapshotType.GLOBAL_STATE),
+            new RevisionsStatesConverter(Vocabulary.HISTORY_ADDITIONS, Vocabulary.SnapshotType.NONE, Vocabulary.SnapshotType.ADDITIONS),
+            new RevisionsStatesConverter(Vocabulary.HISTORY_DELETIONS, Vocabulary.SnapshotType.NONE, Vocabulary.SnapshotType.DELETIONS),
+            new RevisionIdMagicPredicate(),
+            new PreviousRevisionMagicPredicate(),
+            new NextRevisionMagicPredicate(),
+            new RevisionTopicMagicPredicate(),
+            new RevisionDateMagicPredicate(),
+            new ParentRevisionMagicPredicate(),
+            new RevisionAuthorMagicPredicate()
+    };
+    for (MagicPredicate predicate : predicates) {
+      magicPredicates.put(predicate.getPredicate(), predicate);
+    }
+  }
 
   @Override
   public CloseableIteration<Statement, QueryEvaluationException> getStatements(
           Resource subj, IRI pred, Value obj, Resource... contexts
   ) throws QueryEvaluationException {
-    if (Vocabulary.HISTORY_GLOBAL_STATE.equals(pred)) {
-      return getStatementsForRevisionConversionRelation(subj, pred, obj, Vocabulary.SnapshotType.NONE, Vocabulary.SnapshotType.GLOBAL_STATE);
-    } else if (Vocabulary.HISTORY_ADDITIONS.equals(pred)) {
-      return getStatementsForRevisionConversionRelation(subj, pred, obj, Vocabulary.SnapshotType.NONE, Vocabulary.SnapshotType.ADDITIONS);
-    } else if (Vocabulary.HISTORY_DELETIONS.equals(pred)) {
-      return getStatementsForRevisionConversionRelation(subj, pred, obj, Vocabulary.SnapshotType.NONE, Vocabulary.SnapshotType.DELETIONS);
-    } else if (Vocabulary.HISTORY_REVISION_ID.equals(pred)) {
-      if (subj == null) {
-        if (obj == null) {
-          throw new QueryEvaluationException("not supported yet ? " + pred + " ?"); //TODO
-        } else if (obj instanceof Literal) {
-          return toIteration(valueFactory.createRevisionIRI(((Literal) obj).longValue()), pred, obj);
-        } else {
-          return EMPTY_ITERATION;
-        }
-      } else {
-        NumericValueFactory.RevisionIRI subjRevision = convertRevisionIRI(subj);
-        if (obj == null) {
-          return toIteration(subj, pred, valueFactory.createLiteral(subjRevision.getRevisionId()));
-        } else {
-          return valueFactory.createLiteral(subjRevision.getRevisionId()).equals(obj)
-                  ? toIteration(subj, pred, obj)
-                  : EMPTY_ITERATION;
-        }
-      }
-    } else if (Vocabulary.HISTORY_PREVIOUS_REVISION.equals(pred)) {
-      if (subj == null) {
-        if (obj == null) {
-          throw new QueryEvaluationException("not supported yet ? " + pred + " ?"); //TODO
-        } else {
-          return toIteration(convertRevisionIRI(obj).previousRevision(), pred, obj);
-        }
-      } else {
-        if (obj == null) {
-          return toIteration(subj, pred, convertRevisionIRI(subj).previousRevision());
-        } else {
-          return convertRevisionIRI(subj).previousRevision().equals(obj)
-                  ? toIteration(subj, pred, obj)
-                  : EMPTY_ITERATION;
-        }
-      }
-    } else if (Vocabulary.HISTORY_NEXT_REVISION.equals(pred)) {
-      if (subj == null) {
-        if (obj == null) {
-          throw new QueryEvaluationException("not supported yet ? " + pred + " ?"); //TODO
-        } else {
-          return toIteration(convertRevisionIRI(obj).nextRevision(), pred, obj);
-        }
-      } else {
-        if (obj == null) {
-          return toIteration(subj, pred, convertRevisionIRI(subj).nextRevision());
-        } else {
-          return convertRevisionIRI(subj).nextRevision().equals(obj)
-                  ? toIteration(subj, pred, obj)
-                  : EMPTY_ITERATION;
-        }
-      }
-    } else if (Vocabulary.SCHEMA_ABOUT.equals(pred)) {
-      if (subj == null) {
-        if (obj == null) {
-          throw new QueryEvaluationException("not supported yet: ? " + pred + " ?"); //TODO
-        } else {
-          try {
-            long[] revisions = topicRevisionsIndex.getOrDefault(valueFactory.encodeValue(obj), EMPTY_ARRAY);
-            return new CloseableIteratorIteration<>(Arrays.stream(revisions)
-                    .mapToObj(revisionId -> valueFactory.createStatement(valueFactory.createRevisionIRI(revisionId), Vocabulary.SCHEMA_ABOUT, obj))
-                    .iterator()
-            );
-          } catch (NotSupportedValueException e) {
-            LOGGER.error(e.getMessage(), e);
-            return EMPTY_ITERATION;
-          }
-        }
-      } else {
-        if (obj == null) {
-          return Optional.ofNullable(revisionTopicIndex.get(parseRevisionIRI(subj)))
-                  .flatMap(value -> {
-                    try {
-                      return Optional.of(valueFactory.createValue(value));
-                    } catch (NotSupportedValueException e) {
-                      LOGGER.error(e.getMessage(), e);
-                      return Optional.empty();
-                    }
-                  })
-                  .map(newObj -> toIteration(subj, pred, newObj))
-                  .orElse(EMPTY_ITERATION);
-        } else {
-          try {
-            return revisionTopicIndex.getOrDefault(parseRevisionIRI(subj), 0L) == valueFactory.encodeValue(obj)
-                    ? toIteration(subj, pred, obj)
-                    : EMPTY_ITERATION;
-          } catch (NotSupportedValueException e) {
-            LOGGER.error(e.getMessage(), e);
-            return EMPTY_ITERATION;
-          }
-        }
-      }
-    } else if (Vocabulary.SCHEMA_AUTHOR.equals(pred)) {
-      if (subj == null) {
-        throw new QueryEvaluationException("not supported yet: ? " + pred + " " + obj); //TODO
-      } else {
-        if (obj == null) {
-          return Optional.ofNullable(revisionContributorIndex.get(parseRevisionIRI(subj)))
-                  .map(valueFactory::createLiteral)
-                  .map(newObj -> toIteration(subj, pred, newObj))
-                  .orElse(EMPTY_ITERATION);
-        } else {
-          return obj.stringValue().equals(revisionContributorIndex.get(parseRevisionIRI(subj)))
-                  ? toIteration(subj, pred, obj)
-                  : EMPTY_ITERATION;
-        }
-      }
-    } else if (Vocabulary.SCHEMA_DATE_CREATED.equals(pred)) {
-      if (subj == null) {
-        if (obj == null) {
-          throw new QueryEvaluationException("not supported yet: ? " + pred + " ?"); //TODO
-        } else {
-          try {
-            long[] revisions = dateRevisionsIndex.getOrDefault(Instant.parse(obj.stringValue()).getEpochSecond(), EMPTY_ARRAY);
-            return new CloseableIteratorIteration<>(Arrays.stream(revisions)
-                    .mapToObj(revisionId -> valueFactory.createStatement(valueFactory.createRevisionIRI(revisionId), Vocabulary.SCHEMA_ABOUT, obj))
-                    .iterator()
-            );
-          } catch (DateTimeParseException e) {
-            throw new QueryEvaluationException(pred + " is an invalid revision timestamp");
-          }
-        }
-      } else {
-        if (obj == null) {
-          return Optional.ofNullable(revisionDateIndex.get(parseRevisionIRI(subj)))
-                  .map(timestamp -> valueFactory.createLiteral(
-                          Instant.ofEpochSecond(timestamp).toString(), XMLSchema.DATETIME
-                  ))
-                  .map(newObj -> toIteration(subj, pred, newObj))
-                  .orElse(EMPTY_ITERATION);
-        } else {
-          try {
-            return revisionDateIndex.getOrDefault(parseRevisionIRI(subj), 0L) == Instant.parse(obj.stringValue()).getEpochSecond()
-                    ? toIteration(subj, pred, obj)
-                    : EMPTY_ITERATION;
-          } catch (DateTimeParseException e) {
-            throw new QueryEvaluationException(pred + " is an invalid revision timestamp");
-          }
-        }
-      }
-    } else if (Vocabulary.SCHEMA_IS_BASED_ON.equals(pred)) {
-      if (subj == null) {
-        if (obj == null) {
-          throw new QueryEvaluationException("not supported yet: ? " + pred + " ?"); //TODO
-        } else {
-          return Optional.ofNullable(childRevisionIndex.get(parseRevisionIRI(obj)))
-                  .map(valueFactory::createRevisionIRI)
-                  .map(newSubj -> toIteration(newSubj, pred, obj))
-                  .orElse(EMPTY_ITERATION);
-        }
-      } else {
-        if (obj == null) {
-          return Optional.ofNullable(parentRevisionIndex.get(parseRevisionIRI(subj)))
-                  .map(valueFactory::createRevisionIRI)
-                  .map(newObj -> toIteration(subj, pred, newObj))
-                  .orElse(EMPTY_ITERATION);
-        } else {
-          return parentRevisionIndex.getOrDefault(parseRevisionIRI(subj), 0L) == parseRevisionIRI(obj)
-                  ? toIteration(subj, pred, obj)
-                  : EMPTY_ITERATION;
-        }
-      }
+    NumericValueFactory.RevisionIRI[] revisionIris = getRevisionIris(contexts);
+    if (revisionIris != null) {
+      return getStatementsForBasicRelation(subj, pred, obj, revisionIris);
+    } else if (pred == null) {
+      return new UnionIteration<>(Stream.concat(
+              magicPredicates.values().stream().map(predicate -> predicate.getStatements(subj, obj)),
+              Stream.of(getStatementsForBasicRelation(subj, null, obj, null))
+      ).collect(Collectors.toList()));
+    } else if (magicPredicates.containsKey(pred)) {
+      return magicPredicates.get(pred).getStatements(subj, obj);
     } else {
-      try {
-        NumericValueFactory.RevisionIRI[] revisionIris = getRevisionIris(contexts);
-        if (subj == null) {
-          if (pred == null) {
-            long[] prefix = (obj == null) ? EMPTY_ARRAY : new long[]{valueFactory.encodeValue(obj)};
-            return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
-                    prefix,
-                    (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatOspTriple(triple, revisionIri)).iterator()));
-          } else {
-            long[] prefix = (obj == null)
-                    ? new long[]{valueFactory.encodeValue(pred)}
-                    : new long[]{valueFactory.encodeValue(pred), valueFactory.encodeValue(obj)};
-            return new FlatMapClosableIteration<>(posStatementIndex.longPrefixIteration(
-                    prefix,
-                    (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatPosTriple(triple, revisionIri)).iterator()));
-          }
-        } else {
-          if (obj == null) {
-            long[] prefix = pred == null
-                    ? new long[]{valueFactory.encodeValue(subj)}
-                    : new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)};
-            return new FlatMapClosableIteration<>(spoStatementIndex.longPrefixIteration(
-                    prefix,
-                    (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatSpoTriple(triple, revisionIri)).iterator()));
-          } else {
-            long[] prefix = pred == null
-                    ? new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj)}
-                    : new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)};
-            return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
-                    prefix,
-                    (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatOspTriple(triple, revisionIri)).iterator()));
-          }
-        }
-      } catch (NotSupportedValueException e) {
-        throw new QueryEvaluationException(e);
-      }
+      return getStatementsForBasicRelation(subj, pred, obj, null);
     }
   }
 
-  private CloseableIteration<Statement, QueryEvaluationException> getStatementsForRevisionConversionRelation(
-          Resource subj, IRI pred, Value obj,
-          Vocabulary.SnapshotType subjType, Vocabulary.SnapshotType objType
-  ) {
-    if (subj == null) {
-      if (obj == null) {
-        throw new QueryEvaluationException("not supported yet ? " + pred + " ?"); //TODO
+  private CloseableIteration<Statement, QueryEvaluationException> getStatementsForBasicRelation(Resource subj, IRI pred, Value obj, NumericValueFactory.RevisionIRI[] revisionIris) {
+    try {
+      if (subj == null) {
+        if (pred == null) {
+          long[] prefix = (obj == null) ? EMPTY_ARRAY : new long[]{valueFactory.encodeValue(obj)};
+          return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
+                  prefix,
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatOspTriple(triple, revisionIri)).iterator()));
+        } else {
+          long[] prefix = (obj == null)
+                  ? new long[]{valueFactory.encodeValue(pred)}
+                  : new long[]{valueFactory.encodeValue(pred), valueFactory.encodeValue(obj)};
+          return new FlatMapClosableIteration<>(posStatementIndex.longPrefixIteration(
+                  prefix,
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatPosTriple(triple, revisionIri)).iterator()));
+        }
       } else {
-        NumericValueFactory.RevisionIRI objRevision = convertRevisionIRI(obj);
-        return objRevision.getSnapshotType() == objType
-                ? toIteration(objRevision.withSnapshotType(subjType), pred, obj)
-                : EMPTY_ITERATION;
+        if (obj == null) {
+          long[] prefix = pred == null
+                  ? new long[]{valueFactory.encodeValue(subj)}
+                  : new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)};
+          return new FlatMapClosableIteration<>(spoStatementIndex.longPrefixIteration(
+                  prefix,
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatSpoTriple(triple, revisionIri)).iterator()));
+        } else {
+          long[] prefix = pred == null
+                  ? new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj)}
+                  : new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)};
+          return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
+                  prefix,
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatOspTriple(triple, revisionIri)).iterator()));
+        }
       }
-    } else {
-      NumericValueFactory.RevisionIRI subjRevision = convertRevisionIRI(subj);
-      if (subjRevision.getSnapshotType() != subjType) {
-        return EMPTY_ITERATION;
-      } else if (obj == null) {
-        return toIteration(subj, pred, subjRevision.withSnapshotType(objType));
-      } else {
-        return subjRevision.withSnapshotType(objType).equals(obj)
-                ? toIteration(subj, pred, obj)
-                : EMPTY_ITERATION;
-      }
+    } catch (NotSupportedValueException e) {
+      throw new QueryEvaluationException(e);
     }
   }
 
   private NumericValueFactory.RevisionIRI[] getRevisionIris(Resource... contexts) {
     if (contexts == null || contexts.length == 0) {
-      //LOGGER.info("No revision context given");
       return null;
     }
     return Arrays.stream(contexts).map(this::convertRevisionIRI).toArray(NumericValueFactory.RevisionIRI[]::new);
@@ -366,17 +201,21 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   }
 
   private NumericValueFactory.RevisionIRI convertRevisionIRI(Value revisionIRI) {
+    NumericValueFactory.RevisionIRI result = convertRevisionIRINullable(revisionIRI);
+    if (result == null) {
+      throw new QueryEvaluationException("Not supported revision IRI: " + revisionIRI);
+    }
+    return result;
+  }
+
+  private NumericValueFactory.RevisionIRI convertRevisionIRINullable(Value revisionIRI) {
     if (!(revisionIRI instanceof NumericValueFactory.RevisionIRI) && revisionIRI instanceof IRI) {
       revisionIRI = valueFactory.createIRI((IRI) revisionIRI);
     }
     if (!(revisionIRI instanceof NumericValueFactory.RevisionIRI)) {
-      throw new QueryEvaluationException("Not supported revision IRI: " + revisionIRI);
+      return null;
     }
     return (NumericValueFactory.RevisionIRI) revisionIRI;
-  }
-
-  private long parseRevisionIRI(Value revisionIRI) {
-    return convertRevisionIRI(revisionIRI).getRevisionId();
   }
 
   private boolean isInRanges(NumericValueFactory.RevisionIRI revisionIri, long[] revisionIdRanges) {
@@ -433,6 +272,311 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     @Override
     public void close() throws X {
       iter.close();
+    }
+  }
+
+  private abstract class MagicPredicate {
+    private IRI predicate;
+
+    MagicPredicate(IRI predicate) {
+      this.predicate = valueFactory.createIRI(predicate);
+    }
+
+    IRI getPredicate() {
+      return predicate;
+    }
+
+    abstract CloseableIteration<Statement, QueryEvaluationException> getStatements(Resource subj, Value obj);
+  }
+
+  private abstract class RevisionsSubjectMagicPredicate extends MagicPredicate {
+    RevisionsSubjectMagicPredicate(IRI predicate) {
+      super(predicate);
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatements(Resource subj, Value obj) {
+      if (subj == null) {
+        return getStatements(null, obj);
+      } else {
+        NumericValueFactory.RevisionIRI revision = convertRevisionIRINullable(subj);
+        if (revision == null) {
+          return EMPTY_ITERATION;
+        }
+        return getStatements(revision, obj);
+      }
+    }
+
+    abstract CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subj, Value obj);
+  }
+
+  private abstract class BetweenRevisionsMagicPredicate extends MagicPredicate {
+    BetweenRevisionsMagicPredicate(IRI predicate) {
+      super(predicate);
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatements(Resource subj, Value obj) {
+      if (subj == null) {
+        if (obj == null) {
+          throw new QueryEvaluationException("not supported yet ? " + getPredicate() + " ?"); //TODO
+        }
+        NumericValueFactory.RevisionIRI objRevision = convertRevisionIRINullable(obj);
+        if (objRevision == null) {
+          return EMPTY_ITERATION;
+        }
+        return getStatementsForObject(objRevision);
+      } else {
+        NumericValueFactory.RevisionIRI subjRevision = convertRevisionIRINullable(subj);
+        if (subjRevision == null) {
+          return EMPTY_ITERATION;
+        }
+        if (obj == null) {
+          return getStatementsForSubject(subjRevision);
+        }
+
+        NumericValueFactory.RevisionIRI objRevision = convertRevisionIRINullable(obj);
+        if (objRevision == null) {
+          return EMPTY_ITERATION;
+        }
+        return getStatementsForSubjectObject(subjRevision, objRevision);
+      }
+    }
+
+    abstract CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubject(NumericValueFactory.RevisionIRI subj);
+
+    abstract CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubjectObject(NumericValueFactory.RevisionIRI subj, NumericValueFactory.RevisionIRI obj);
+
+    abstract CloseableIteration<Statement, QueryEvaluationException> getStatementsForObject(NumericValueFactory.RevisionIRI obj);
+  }
+
+  private final class RevisionsStatesConverter extends BetweenRevisionsMagicPredicate {
+    private final Vocabulary.SnapshotType subjType;
+    private final Vocabulary.SnapshotType objType;
+
+    RevisionsStatesConverter(IRI predicate, Vocabulary.SnapshotType subjType, Vocabulary.SnapshotType objType) {
+      super(predicate);
+      this.subjType = subjType;
+      this.objType = objType;
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubject(NumericValueFactory.RevisionIRI subj) {
+      return toIteration(subj, getPredicate(), subj.withSnapshotType(objType));
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubjectObject(NumericValueFactory.RevisionIRI subj, NumericValueFactory.RevisionIRI obj) {
+      return subj.withSnapshotType(objType).equals(obj)
+              ? toIteration(subj, getPredicate(), obj)
+              : EMPTY_ITERATION;
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForObject(NumericValueFactory.RevisionIRI obj) {
+      return obj.getSnapshotType() == objType
+              ? toIteration(obj.withSnapshotType(subjType), getPredicate(), obj)
+              : EMPTY_ITERATION;
+    }
+  }
+
+  private final class RevisionIdMagicPredicate extends RevisionsSubjectMagicPredicate {
+    RevisionIdMagicPredicate() {
+      super(Vocabulary.HISTORY_REVISION_ID);
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subjRevision, Value obj) {
+      if (subjRevision == null) {
+        if (obj == null) {
+          throw new QueryEvaluationException("not supported yet ? " + getPredicate() + " ?"); //TODO
+        } else if (obj instanceof Literal) {
+          return toIteration(valueFactory.createRevisionIRI(((Literal) obj).longValue()), getPredicate(), obj);
+        } else {
+          return EMPTY_ITERATION;
+        }
+      } else {
+        if (obj == null) {
+          return toIteration(subjRevision, getPredicate(), valueFactory.createLiteral(subjRevision.getRevisionId()));
+        } else {
+          return valueFactory.createLiteral(subjRevision.getRevisionId()).equals(obj)
+                  ? toIteration(subjRevision, getPredicate(), obj)
+                  : EMPTY_ITERATION;
+        }
+      }
+    }
+  }
+
+  private final class PreviousRevisionMagicPredicate extends BetweenRevisionsMagicPredicate {
+    PreviousRevisionMagicPredicate() {
+      super(Vocabulary.HISTORY_PREVIOUS_REVISION);
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubject(NumericValueFactory.RevisionIRI subj) {
+      return toIteration(subj, getPredicate(), subj.previousRevision());
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubjectObject(NumericValueFactory.RevisionIRI subj, NumericValueFactory.RevisionIRI obj) {
+      return subj.nextRevision().equals(obj) ? toIteration(subj, getPredicate(), obj) : EMPTY_ITERATION;
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForObject(NumericValueFactory.RevisionIRI obj) {
+      return toIteration(obj.nextRevision(), getPredicate(), obj);
+    }
+  }
+
+  private final class NextRevisionMagicPredicate extends BetweenRevisionsMagicPredicate {
+    NextRevisionMagicPredicate() {
+      super(Vocabulary.HISTORY_NEXT_REVISION);
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubject(NumericValueFactory.RevisionIRI subj) {
+      return toIteration(subj, getPredicate(), subj.nextRevision());
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubjectObject(NumericValueFactory.RevisionIRI subj, NumericValueFactory.RevisionIRI obj) {
+      return subj.previousRevision().equals(obj) ? toIteration(subj, getPredicate(), obj) : EMPTY_ITERATION;
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForObject(NumericValueFactory.RevisionIRI obj) {
+      return toIteration(obj.previousRevision(), getPredicate(), obj);
+    }
+  }
+
+  private abstract class RevisionPropertyMultipleAncestorsMagicPredicate extends RevisionsSubjectMagicPredicate {
+    private final RocksStore.Index<Long, Long> soIndex;
+    private final RocksStore.Index<Long, long[]> osIndex;
+
+    RevisionPropertyMultipleAncestorsMagicPredicate(IRI predicate, RocksStore.Index<Long, Long> soIndex, RocksStore.Index<Long, long[]> osIndex) {
+      super(predicate);
+      this.soIndex = soIndex;
+      this.osIndex = osIndex;
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subjRevision, Value obj) {
+      if (subjRevision == null) {
+        if (obj == null) {
+          throw new QueryEvaluationException("not supported yet: ? " + getPredicate() + " ?"); //TODO
+        } else {
+          long[] revisions = osIndex.getOrDefault(encodeValue(obj), EMPTY_ARRAY);
+          return new CloseableIteratorIteration<>(Arrays.stream(revisions)
+                  .mapToObj(revisionId -> valueFactory.createStatement(valueFactory.createRevisionIRI(revisionId), Vocabulary.SCHEMA_ABOUT, obj))
+                  .iterator()
+          );
+        }
+      } else {
+        if (obj == null) {
+          Long value = soIndex.get(subjRevision.getRevisionId());
+          return value == null ? EMPTY_ITERATION : toIteration(subjRevision, getPredicate(), decodeValue(value));
+        } else {
+          return revisionTopicIndex.getOrDefault(subjRevision.getRevisionId(), 0L) == encodeValue(obj)
+                  ? toIteration(subjRevision, getPredicate(), obj)
+                  : EMPTY_ITERATION;
+        }
+      }
+    }
+
+    abstract long encodeValue(Value value) throws QueryEvaluationException;
+
+    abstract Value decodeValue(long value) throws QueryEvaluationException;
+  }
+
+  private final class RevisionTopicMagicPredicate extends RevisionPropertyMultipleAncestorsMagicPredicate {
+    RevisionTopicMagicPredicate() {
+      super(Vocabulary.SCHEMA_ABOUT, revisionTopicIndex, topicRevisionsIndex);
+    }
+
+    @Override
+    long encodeValue(Value value) throws QueryEvaluationException {
+      try {
+        return valueFactory.encodeValue(value);
+      } catch (NotSupportedValueException e) {
+        throw new QueryEvaluationException(e);
+      }
+    }
+
+    @Override
+    Value decodeValue(long value) throws QueryEvaluationException {
+      try {
+        return valueFactory.createValue(value);
+      } catch (NotSupportedValueException e) {
+        throw new QueryEvaluationException(e);
+      }
+    }
+  }
+
+  private final class RevisionDateMagicPredicate extends RevisionPropertyMultipleAncestorsMagicPredicate {
+    RevisionDateMagicPredicate() {
+      super(Vocabulary.SCHEMA_DATE_CREATED, revisionDateIndex, dateRevisionsIndex);
+    }
+
+    @Override
+    long encodeValue(Value value) throws QueryEvaluationException {
+      try {
+        return Instant.parse(value.stringValue()).getEpochSecond();
+      } catch (DateTimeParseException e) {
+        throw new QueryEvaluationException(value + " is an invalid revision timestamp");
+      }
+    }
+
+    @Override
+    Value decodeValue(long value) throws QueryEvaluationException {
+      return valueFactory.createLiteral(Instant.ofEpochSecond(value).toString(), XMLSchema.DATETIME);
+    }
+  }
+
+  private final class ParentRevisionMagicPredicate extends BetweenRevisionsMagicPredicate {
+    ParentRevisionMagicPredicate() {
+      super(Vocabulary.SCHEMA_IS_BASED_ON);
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubject(NumericValueFactory.RevisionIRI subj) {
+      Long obj = parentRevisionIndex.get(subj.getRevisionId());
+      return obj == null ? EMPTY_ITERATION : toIteration(subj, getPredicate(), valueFactory.createRevisionIRI(obj));
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForSubjectObject(NumericValueFactory.RevisionIRI subj, NumericValueFactory.RevisionIRI obj) {
+      return parentRevisionIndex.getOrDefault(subj.getRevisionId(), 0L) == obj.getRevisionId()
+              ? toIteration(subj, getPredicate(), obj)
+              : EMPTY_ITERATION;
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatementsForObject(NumericValueFactory.RevisionIRI obj) {
+      Long subj = childRevisionIndex.get(obj.getRevisionId());
+      return subj == null ? EMPTY_ITERATION : toIteration(valueFactory.createRevisionIRI(subj), getPredicate(), obj);
+    }
+  }
+
+  private final class RevisionAuthorMagicPredicate extends RevisionsSubjectMagicPredicate {
+    RevisionAuthorMagicPredicate() {
+      super(Vocabulary.SCHEMA_AUTHOR);
+    }
+
+    CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subj, Value obj) {
+      if (subj == null) {
+        throw new QueryEvaluationException("not supported yet: ? " + getPredicate() + " " + obj); //TODO
+      } else {
+        if (obj == null) {
+          return Optional.ofNullable(revisionContributorIndex.get(subj.getRevisionId()))
+                  .map(valueFactory::createLiteral)
+                  .map(newObj -> toIteration(subj, getPredicate(), newObj))
+                  .orElse(EMPTY_ITERATION);
+        } else {
+          return obj.stringValue().equals(revisionContributorIndex.get(subj.getRevisionId()))
+                  ? toIteration(subj, getPredicate(), obj)
+                  : EMPTY_ITERATION;
+        }
+      }
     }
   }
 }

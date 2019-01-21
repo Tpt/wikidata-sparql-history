@@ -23,6 +23,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
 
   private final RocksStore store;
   private final RocksStore.Index<Long, Long> revisionDateIndex;
+  private final RocksStore.Index<Long, long[]> dateRevisionsIndex;
   private final RocksStore.Index<Long, Long> parentRevisionIndex;
   private final RocksStore.Index<Long, Long> childRevisionIndex;
   private final RocksStore.Index<Long, Long> revisionTopicIndex;
@@ -35,6 +36,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   public RocksTripleSource(Path path) {
     store = new RocksStore(path, true);
     revisionDateIndex = store.revisionDateIndex();
+    dateRevisionsIndex = store.dateRevisionsIndex();
     parentRevisionIndex = store.parentRevisionIndex();
     childRevisionIndex = store.childRevisionIndex();
     revisionTopicIndex = store.revisionTopicIndex();
@@ -175,7 +177,19 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
       }
     } else if (Vocabulary.SCHEMA_DATE_CREATED.equals(pred)) {
       if (subj == null) {
-        throw new QueryEvaluationException("not supported yet: ? " + pred + " " + obj); //TODO
+        if (obj == null) {
+          throw new QueryEvaluationException("not supported yet: ? " + pred + " ?"); //TODO
+        } else {
+          try {
+            long[] revisions = dateRevisionsIndex.getOrDefault(Instant.parse(obj.stringValue()).getEpochSecond(), EMPTY_ARRAY);
+            return new CloseableIteratorIteration<>(Arrays.stream(revisions)
+                    .mapToObj(revisionId -> valueFactory.createStatement(valueFactory.createRevisionIRI(revisionId), Vocabulary.SCHEMA_ABOUT, obj))
+                    .iterator()
+            );
+          } catch (DateTimeParseException e) {
+            throw new QueryEvaluationException(pred + " is an invalid revision timestamp");
+          }
+        }
       } else {
         if (obj == null) {
           return Optional.ofNullable(revisionDateIndex.get(parseRevisionIRI(subj)))

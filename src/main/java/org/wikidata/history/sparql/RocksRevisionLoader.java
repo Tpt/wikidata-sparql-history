@@ -27,6 +27,7 @@ public final class RocksRevisionLoader implements AutoCloseable {
 
   public void load(Path file) throws IOException {
     RocksStore.Index<Long, Long> revisionDateOutput = store.revisionDateIndex();
+    RocksStore.Index<Long, long[]> dateRevisionsOutput = store.dateRevisionsIndex();
     RocksStore.Index<Long, Long> parentRevisionOutput = store.parentRevisionIndex();
     RocksStore.Index<Long, Long> childRevisionOutput = store.childRevisionIndex();
     RocksStore.Index<Long, Long> revisionTopicOutput = store.revisionTopicIndex();
@@ -48,16 +49,15 @@ public final class RocksRevisionLoader implements AutoCloseable {
 
         try {
           long entity = valueFactory.encodeValue(valueFactory.createIRI(Vocabulary.WD_NAMESPACE, parts[2]));
-          long[] otherRevisionIds = topicRevisionsOutput.getOrDefault(entity, EMPTY_ARRAY);
-          long[] allRevisionIds = Arrays.copyOfRange(otherRevisionIds, 0, otherRevisionIds.length + 1);
-          allRevisionIds[otherRevisionIds.length] = revisionId;
           revisionTopicOutput.put(revisionId, entity);
-          topicRevisionsOutput.put(entity, allRevisionIds);
-        } catch (Exception e) {
+          addToMultipleValuesIndex(topicRevisionsOutput, entity, revisionId);
+        } catch (NotSupportedValueException e) {
           LOGGER.error(e.getMessage(), e);
         }
 
         revisionDateOutput.put(revisionId, timestamp);
+        addToMultipleValuesIndex(dateRevisionsOutput, timestamp, revisionId);
+
         revisionContributorOutput.put(revisionId, contributor);
       });
     }
@@ -65,6 +65,13 @@ public final class RocksRevisionLoader implements AutoCloseable {
 
   private BufferedReader gzipReader(Path path) throws IOException {
     return new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(path))));
+  }
+
+  private <K> void addToMultipleValuesIndex(RocksStore.Index<K, long[]> index, K key, long value) {
+    long[] otherValues = index.getOrDefault(key, EMPTY_ARRAY);
+    long[] allValues = Arrays.copyOfRange(otherValues, 0, otherValues.length + 1);
+    allValues[otherValues.length] = value;
+    index.put(key, allValues);
   }
 
   @Override

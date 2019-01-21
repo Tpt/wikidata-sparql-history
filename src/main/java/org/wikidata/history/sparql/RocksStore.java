@@ -18,6 +18,7 @@ public class RocksStore implements AutoCloseable {
   private static final byte[] ID_FOR_LANGUAGE_COLUMN_NAME = "id4lang".getBytes();
   private static final byte[] LANGUAGE_FOR_ID_COLUMN_NAME = "lang4id".getBytes();
   private static final byte[] REVISION_DATE = "revision_date".getBytes();
+  private static final byte[] DATE_REVISIONS = "date_revisions".getBytes();
   private static final byte[] PARENT_REVISION = "parent_revision".getBytes();
   private static final byte[] CHILD_REVISION = "child_revision".getBytes();
   private static final byte[] REVISION_TOPIC = "revision_topic".getBytes();
@@ -97,6 +98,10 @@ public class RocksStore implements AutoCloseable {
 
   Index<Long, Long> revisionDateIndex() {
     return newIndex(REVISION_DATE, LONG_SERIALIZER, LONG_SERIALIZER);
+  }
+
+  Index<Long, long[]> dateRevisionsIndex() {
+    return newIndex(DATE_REVISIONS, LONG_SERIALIZER, LONG_ARRAY_SERIALIZER);
   }
 
   Index<Long, Long> parentRevisionIndex() {

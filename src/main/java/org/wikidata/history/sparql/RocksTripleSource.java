@@ -420,11 +420,11 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
 
     @Override
     public E next() throws X {
-        while (!current.hasNext()) {
-          current = iter.next();
-        }
-        return current.next();
+      while (!current.hasNext()) {
+        current = iter.next();
       }
+      return current.next();
+    }
 
     @Override
     public void remove() {

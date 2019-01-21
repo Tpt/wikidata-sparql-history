@@ -1,5 +1,6 @@
 package org.wikidata.history.sparql;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,6 +10,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 public final class RocksRevisionLoader implements AutoCloseable {
@@ -33,6 +35,7 @@ public final class RocksRevisionLoader implements AutoCloseable {
     RocksStore.Index<Long, Long> revisionTopicOutput = store.revisionTopicIndex();
     RocksStore.Index<Long, long[]> topicRevisionsOutput = store.topicRevisionIndex();
     RocksStore.Index<Long, String> revisionContributorOutput = store.revisionContributorIndex();
+    RocksStore.Index<Map.Entry<String, Long>, Object> contributorRevisionsIndex = store.contributorRevisionsIndex();
 
     try (BufferedReader reader = gzipReader(file)) {
       reader.lines().parallel().forEach(line -> {
@@ -59,10 +62,11 @@ public final class RocksRevisionLoader implements AutoCloseable {
         addToMultipleValuesIndex(dateRevisionsOutput, timestamp, revisionId);
 
         revisionContributorOutput.put(revisionId, contributor);
+        contributorRevisionsIndex.put(Pair.of(contributor, revisionId), null);
       });
     }
 
-    System.out.println("Compacting store");
+    LOGGER.info("Compacting store");
     store.compact();
   }
 

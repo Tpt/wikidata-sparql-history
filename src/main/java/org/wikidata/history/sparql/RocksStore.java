@@ -24,6 +24,7 @@ public class RocksStore implements AutoCloseable {
   private static final byte[] REVISION_TOPIC = "revision_topic".getBytes();
   private static final byte[] TOPIC_REVISION = "topic_revision".getBytes();
   private static final byte[] REVISION_CONTRIBUTOR = "revision_contributor".getBytes();
+  private static final byte[] CONTRIBUTOR_REVISIONS = "contributor_revisions".getBytes();
   private static final byte[] STATEMENT_SPO = "statement_spo".getBytes();
   private static final byte[] STATEMENT_POS = "statement_pos".getBytes();
   private static final byte[] STATEMENT_OSP = "statement_osp".getBytes();
@@ -40,10 +41,12 @@ public class RocksStore implements AutoCloseable {
           REVISION_TOPIC,
           TOPIC_REVISION,
           REVISION_CONTRIBUTOR,
+          CONTRIBUTOR_REVISIONS,
           STATEMENT_SPO,
           STATEMENT_POS,
           STATEMENT_OSP
   };
+  private static final byte[] EMPTY_ARRAY = new byte[]{};
 
   private final ColumnFamilyOptions columnFamilyOptions;
   private final Map<byte[], ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
@@ -125,6 +128,10 @@ public class RocksStore implements AutoCloseable {
 
   Index<Long, String> revisionContributorIndex() {
     return newIndex(REVISION_CONTRIBUTOR, LONG_SERIALIZER, STRING_SERIALIZER);
+  }
+
+  Index<Map.Entry<String, Long>, Object> contributorRevisionsIndex() {
+    return newIndex(CONTRIBUTOR_REVISIONS, STRING_LONG_SERIALIZER, NULL_SERIALIZER);
   }
 
   Index<long[], long[]> spoStatementIndex() {
@@ -219,10 +226,17 @@ public class RocksStore implements AutoCloseable {
     }
 
     <E, X extends Exception> CloseableIteration<E, X> longPrefixIteration(long[] prefix, FailingKVMappingFunction<K, V, E, X> mappingFunction) {
+      return prefixIteration(LONG_ARRAY_SERIALIZER.serialize(prefix), mappingFunction);
+    }
+
+    <E, X extends Exception> CloseableIteration<E, X> stringPrefixIteration(String prefix, FailingKVMappingFunction<K, V, E, X> mappingFunction) {
+      return prefixIteration(STRING_SERIALIZER.serialize(prefix), mappingFunction);
+    }
+
+    <E, X extends Exception> CloseableIteration<E, X> prefixIteration(byte[] prefix, FailingKVMappingFunction<K, V, E, X> mappingFunction) {
       RocksIterator iterator = db.newIterator(columnFamilyHandle);
-      byte[] rawPrefix = LONG_ARRAY_SERIALIZER.serialize(prefix);
-      iterator.seek(rawPrefix);
-      return new RocksMappingIteration<>(iterator, rawPrefix, keySerializer, valueSerializer, mappingFunction);
+      iterator.seek(prefix);
+      return new RocksMappingIteration<>(iterator, prefix, keySerializer, valueSerializer, mappingFunction);
     }
 
     Iterator<Map.Entry<K, V>> longPrefixIterator(long[] prefix) {
@@ -232,6 +246,18 @@ public class RocksStore implements AutoCloseable {
       return new RocksSimpleIterator<>(iterator, rawPrefix, keySerializer, valueSerializer);
     }
   }
+
+  private static final Serializer<Object> NULL_SERIALIZER = new Serializer<Object>() {
+    @Override
+    public byte[] serialize(Object value) {
+      return EMPTY_ARRAY;
+    }
+
+    @Override
+    public Object deserialize(byte[] value) {
+      return null;
+    }
+  };
 
   private static final Serializer<String> STRING_SERIALIZER = new Serializer<String>() {
     @Override
@@ -257,32 +283,56 @@ public class RocksStore implements AutoCloseable {
     }
   };
 
-  static final Serializer<long[]> LONG_ARRAY_SERIALIZER = new Serializer<long[]>() {
+  private static final Serializer<long[]> LONG_ARRAY_SERIALIZER = new Serializer<long[]>() {
     @Override
     public byte[] serialize(long[] value) {
       byte[] result = new byte[value.length * 8];
       for (int i = 0; i < value.length; i++) {
-        long val = value[i];
-        for (int j = 7; j >= 0; j--) {
-          result[8 * i + j] = (byte) (val & 0xffL);
-          val >>= 8;
-        }
+        addToArray(result, value[i], 8 * i);
       }
       return result;
     }
 
     @Override
     public long[] deserialize(byte[] value) {
-      long[] result = new long[value.length / 8];
-      for (int offset = 0; offset < value.length; offset += 8) {
-        result[offset / 8] = Longs.fromBytes(
-                value[offset], value[offset + 1], value[offset + 2], value[offset + 3],
-                value[offset + 4], value[offset + 5], value[offset + 6], value[offset + 7]
-        );
+      int len = value.length / 8;
+      long[] result = new long[len];
+      for (int i = 0; i < len; i++) {
+        result[i] = longFromArray(value, 8 * i);
       }
       return result;
     }
   };
+
+  private static final Serializer<Map.Entry<String, Long>> STRING_LONG_SERIALIZER = new Serializer<Map.Entry<String, Long>>() {
+    @Override
+    public byte[] serialize(Map.Entry<String, Long> value) {
+      byte[] str = value.getKey().getBytes();
+      byte[] result = Arrays.copyOf(str, str.length + 8);
+      addToArray(result, value.getValue(), str.length);
+      return result;
+    }
+
+    @Override
+    public Map.Entry<String, Long> deserialize(byte[] value) {
+      byte[] str = Arrays.copyOf(value, value.length - 8);
+      return Pair.of(new String(str), longFromArray(value, value.length - 8));
+    }
+  };
+
+  private static void addToArray(byte[] array, long value, int offset) {
+    for (int j = 7; j >= 0; j--) {
+      array[offset + j] = (byte) (value & 0xffL);
+      value >>= 8;
+    }
+  }
+
+  private static long longFromArray(byte[] array, int offset) {
+    return Longs.fromBytes(
+            array[offset], array[offset + 1], array[offset + 2], array[offset + 3],
+            array[offset + 4], array[offset + 5], array[offset + 6], array[offset + 7]
+    );
+  }
 
   private static abstract class BasicStringStore implements NumericValueFactory.StringStore {
     protected final RocksDB db;

@@ -78,7 +78,7 @@ public final class RocksTripleLoader implements AutoCloseable {
       });
     }
 
-    System.out.println("Compacting store");
+    LOGGER.info("Compacting store");
     store.compact();
   }
 

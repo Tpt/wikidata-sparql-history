@@ -29,6 +29,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   private final RocksStore.Index<Long, Long> revisionTopicIndex;
   private final RocksStore.Index<Long, long[]> topicRevisionsIndex;
   private final RocksStore.Index<Long, String> revisionContributorIndex;
+  private final RocksStore.Index<Map.Entry<String, Long>, Object> contributorRevisionsIndex;
   private final RocksStore.Index<long[], long[]> spoStatementIndex;
   private final RocksStore.Index<long[], long[]> posStatementIndex;
   private final RocksStore.Index<long[], long[]> ospStatementIndex;
@@ -44,6 +45,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     revisionTopicIndex = store.revisionTopicIndex();
     topicRevisionsIndex = store.topicRevisionIndex();
     revisionContributorIndex = store.revisionContributorIndex();
+    contributorRevisionsIndex = store.contributorRevisionsIndex();
     spoStatementIndex = store.spoStatementIndex();
     posStatementIndex = store.posStatementIndex();
     ospStatementIndex = store.ospStatementIndex();
@@ -319,7 +321,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     CloseableIteration<Statement, QueryEvaluationException> getStatements(Resource subj, Value obj) {
       if (subj == null) {
         if (obj == null) {
-          throw new QueryEvaluationException("not supported yet ? " + getPredicate() + " ?"); //TODO
+          return EMPTY_ITERATION; //TODO
         }
         NumericValueFactory.RevisionIRI objRevision = convertRevisionIRINullable(obj);
         if (objRevision == null) {
@@ -389,7 +391,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subjRevision, Value obj) {
       if (subjRevision == null) {
         if (obj == null) {
-          throw new QueryEvaluationException("not supported yet ? " + getPredicate() + " ?"); //TODO
+          return EMPTY_ITERATION; //TODO
         } else if (obj instanceof Literal) {
           return toIteration(valueFactory.createRevisionIRI(((Literal) obj).longValue()), getPredicate(), obj);
         } else {
@@ -463,27 +465,32 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subjRevision, Value obj) {
       if (subjRevision == null) {
         if (obj == null) {
-          throw new QueryEvaluationException("not supported yet: ? " + getPredicate() + " ?"); //TODO
+          return soIndex.longPrefixIteration(new long[]{}, (key, value) -> valueFactory.createStatement(
+                  valueFactory.createRevisionIRI(key),
+                  getPredicate(),
+                  decodeValue(value)
+          ));
         } else {
-          long[] revisions = osIndex.getOrDefault(encodeValue(obj), EMPTY_ARRAY);
-          return new CloseableIteratorIteration<>(Arrays.stream(revisions)
-                  .mapToObj(revisionId -> valueFactory.createStatement(valueFactory.createRevisionIRI(revisionId), Vocabulary.SCHEMA_ABOUT, obj))
+          OptionalLong value = encodeValue(obj);
+          return value.isPresent() ? new CloseableIteratorIteration<>(Arrays.stream(osIndex.getOrDefault(value.getAsLong(), EMPTY_ARRAY))
+                  .mapToObj(revisionId -> valueFactory.createStatement(valueFactory.createRevisionIRI(revisionId), getPredicate(), obj))
                   .iterator()
-          );
+          ) : EMPTY_ITERATION;
         }
       } else {
         if (obj == null) {
           Long value = soIndex.get(subjRevision.getRevisionId());
           return value == null ? EMPTY_ITERATION : toIteration(subjRevision, getPredicate(), decodeValue(value));
         } else {
-          return revisionTopicIndex.getOrDefault(subjRevision.getRevisionId(), 0L) == encodeValue(obj)
+          OptionalLong value = encodeValue(obj);
+          return value.isPresent() && revisionTopicIndex.getOrDefault(subjRevision.getRevisionId(), 0L) == value.getAsLong()
                   ? toIteration(subjRevision, getPredicate(), obj)
                   : EMPTY_ITERATION;
         }
       }
     }
 
-    abstract long encodeValue(Value value) throws QueryEvaluationException;
+    abstract OptionalLong encodeValue(Value value) throws QueryEvaluationException;
 
     abstract Value decodeValue(long value) throws QueryEvaluationException;
   }
@@ -494,9 +501,9 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     }
 
     @Override
-    long encodeValue(Value value) throws QueryEvaluationException {
+    OptionalLong encodeValue(Value value) throws QueryEvaluationException {
       try {
-        return valueFactory.encodeValue(value);
+        return OptionalLong.of(valueFactory.encodeValue(value));
       } catch (NotSupportedValueException e) {
         throw new QueryEvaluationException(e);
       }
@@ -518,12 +525,15 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     }
 
     @Override
-    long encodeValue(Value value) throws QueryEvaluationException {
-      try {
-        return Instant.parse(value.stringValue()).getEpochSecond();
-      } catch (DateTimeParseException e) {
-        throw new QueryEvaluationException(value + " is an invalid revision timestamp");
+    OptionalLong encodeValue(Value value) throws QueryEvaluationException {
+      if (value instanceof Literal && ((Literal) value).getDatatype().equals(XMLSchema.DATETIME)) {
+        try {
+          return OptionalLong.of(Instant.parse(value.stringValue()).getEpochSecond());
+        } catch (DateTimeParseException e) {
+          throw new QueryEvaluationException(value + " is an invalid revision timestamp");
+        }
       }
+      return OptionalLong.empty();
     }
 
     @Override
@@ -564,13 +574,23 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
 
     CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subj, Value obj) {
       if (subj == null) {
-        throw new QueryEvaluationException("not supported yet: ? " + getPredicate() + " " + obj); //TODO
+        if (obj == null) {
+          return revisionContributorIndex.longPrefixIteration(new long[]{}, (key, value) -> valueFactory.createStatement(
+                  valueFactory.createRevisionIRI(key),
+                  getPredicate(),
+                  valueFactory.createLiteral(value)
+          ));
+        } else {
+          return contributorRevisionsIndex.stringPrefixIteration(obj.stringValue(), (key, value) -> valueFactory.createStatement(
+                  valueFactory.createRevisionIRI(key.getValue()),
+                  getPredicate(),
+                  obj
+          ));
+        }
       } else {
         if (obj == null) {
-          return Optional.ofNullable(revisionContributorIndex.get(subj.getRevisionId()))
-                  .map(valueFactory::createLiteral)
-                  .map(newObj -> toIteration(subj, getPredicate(), newObj))
-                  .orElse(EMPTY_ITERATION);
+          String contributor = revisionContributorIndex.get(subj.getRevisionId());
+          return contributor == null ? EMPTY_ITERATION : toIteration(subj, getPredicate(), valueFactory.createLiteral(contributor));
         } else {
           return obj.stringValue().equals(revisionContributorIndex.get(subj.getRevisionId()))
                   ? toIteration(subj, getPredicate(), obj)

@@ -60,7 +60,9 @@ public class RocksStore implements AutoCloseable {
     final List<ColumnFamilyHandle> columnFamilyHandlesList = new ArrayList<>();
     options = new DBOptions()
             .setCreateIfMissing(true)
-            .setCreateMissingColumnFamilies(true);
+            .setCreateMissingColumnFamilies(true)
+            .setWalTtlSeconds(60 * 60 * 24)
+            .setWalSizeLimitMB(4096);
     try {
       if (readOnly) {
         db = RocksDB.openReadOnly(options, dbPath.toString(), columnFamilyDescriptors, columnFamilyHandlesList);

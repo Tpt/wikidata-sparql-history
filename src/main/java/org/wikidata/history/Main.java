@@ -8,6 +8,7 @@ import org.wikidata.history.preprocessor.HistoryOutput;
 import org.wikidata.history.preprocessor.RevisionFileConverter;
 import org.wikidata.history.sparql.HistoryRepository;
 import org.wikidata.history.sparql.RocksRevisionLoader;
+import org.wikidata.history.sparql.RocksStore;
 import org.wikidata.history.sparql.RocksTripleLoader;
 
 import java.io.BufferedWriter;
@@ -27,6 +28,7 @@ public class Main {
     Options options = new Options();
     options.addOption("p", "preprocess", false, "Preprocess the data from Wikidata history XML dump compressed with bz2");
     options.addOption("l", "load", false, "Build database indexes from the preprocessed data");
+    options.addOption("c", "compact", false, "Compacts the database indexes. Always executed after a load");
     options.addOption("q", "sparql", true, "SPARQL query to execute");
 
     options.addOption("dd", "dumps-dir", true, "Directory to preprocess data from.");
@@ -100,6 +102,12 @@ public class Main {
         }
       } else {
         LOGGER.warn("Skipping revisions loading " + triplesFile + " does not exists");
+      }
+    }
+
+    if (line.hasOption("load") || line.hasOption("compact")) {
+      try (RocksStore store = new RocksStore(indexDir, false)) {
+        store.compact();
       }
     }
 

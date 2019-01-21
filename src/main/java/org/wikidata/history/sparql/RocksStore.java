@@ -48,7 +48,7 @@ public class RocksStore implements AutoCloseable {
   private final DBOptions options;
   private final RocksDB db;
 
-  RocksStore(Path dbPath, boolean readOnly) {
+  public RocksStore(Path dbPath, boolean readOnly) {
     columnFamilyOptions = new ColumnFamilyOptions()
             .optimizeUniversalStyleCompaction()
             .setCompressionType(CompressionType.LZ4HC_COMPRESSION)
@@ -129,6 +129,14 @@ public class RocksStore implements AutoCloseable {
 
   private <K, V> Index<K, V> newIndex(byte[] columnName, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
     return new Index<>(db, columnFamilyHandles.get(columnName), keySerializer, valueSerializer);
+  }
+
+  public void compact() {
+    try {
+      db.compactRange();
+    } catch (RocksDBException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

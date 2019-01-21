@@ -26,6 +26,7 @@ public class RocksStore implements AutoCloseable {
   private static final byte[] REVISION_CONTRIBUTOR = "revision_contributor".getBytes();
   private static final byte[] STATEMENT_SPO = "statement_spo".getBytes();
   private static final byte[] STATEMENT_POS = "statement_pos".getBytes();
+  private static final byte[] STATEMENT_OSP = "statement_osp".getBytes();
   private static final byte[][] COLUMN_FAMILIES = new byte[][]{
           RocksDB.DEFAULT_COLUMN_FAMILY,
           ID_FOR_STR_COLUMN_NAME,
@@ -33,13 +34,15 @@ public class RocksStore implements AutoCloseable {
           ID_FOR_LANGUAGE_COLUMN_NAME,
           LANGUAGE_FOR_ID_COLUMN_NAME,
           REVISION_DATE,
+          DATE_REVISIONS,
           PARENT_REVISION,
           CHILD_REVISION,
           REVISION_TOPIC,
           TOPIC_REVISION,
           REVISION_CONTRIBUTOR,
           STATEMENT_SPO,
-          STATEMENT_POS
+          STATEMENT_POS,
+          STATEMENT_OSP
   };
 
   private final ColumnFamilyOptions columnFamilyOptions;
@@ -130,6 +133,10 @@ public class RocksStore implements AutoCloseable {
 
   Index<long[], long[]> posStatementIndex() {
     return newIndex(STATEMENT_POS, LONG_ARRAY_SERIALIZER, LONG_ARRAY_SERIALIZER);
+  }
+
+  Index<long[], long[]> ospStatementIndex() {
+    return newIndex(STATEMENT_OSP, LONG_ARRAY_SERIALIZER, LONG_ARRAY_SERIALIZER);
   }
 
   private <K, V> Index<K, V> newIndex(byte[] columnName, Serializer<K> keySerializer, Serializer<V> valueSerializer) {

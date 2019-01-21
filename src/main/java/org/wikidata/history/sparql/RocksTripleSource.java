@@ -1,9 +1,11 @@
 package org.wikidata.history.sparql;
 
 
-import org.eclipse.rdf4j.common.iteration.*;
+import org.eclipse.rdf4j.common.iteration.CloseableIteration;
+import org.eclipse.rdf4j.common.iteration.CloseableIteratorIteration;
+import org.eclipse.rdf4j.common.iteration.EmptyIteration;
+import org.eclipse.rdf4j.common.iteration.SingletonIteration;
 import org.eclipse.rdf4j.model.*;
-import org.eclipse.rdf4j.model.vocabulary.OWL;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.evaluation.TripleSource;
@@ -31,6 +33,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   private final RocksStore.Index<Long, String> revisionContributorIndex;
   private final RocksStore.Index<long[], long[]> spoStatementIndex;
   private final RocksStore.Index<long[], long[]> posStatementIndex;
+  private final RocksStore.Index<long[], long[]> ospStatementIndex;
   private final NumericValueFactory valueFactory;
 
   public RocksTripleSource(Path path) {
@@ -44,6 +47,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     revisionContributorIndex = store.revisionContributorIndex();
     spoStatementIndex = store.spoStatementIndex();
     posStatementIndex = store.posStatementIndex();
+    ospStatementIndex = store.ospStatementIndex();
     valueFactory = new NumericValueFactory(store.getReadOnlyStringStore());
   }
 
@@ -231,14 +235,14 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
         }
       }
     } else {
-      if (pred != null && !pred.equals(OWL.SAMEAS) && !pred.equals(Vocabulary.P279_CLOSURE) && !pred.getNamespace().equals(Vocabulary.WDT_NAMESPACE)) {
-        return new EmptyIteration<>(); //TODO: better filter
-      }
       try {
         NumericValueFactory.RevisionIRI[] revisionIris = getRevisionIris(contexts);
         if (subj == null) {
           if (pred == null) {
-            throw new QueryEvaluationException("NumericTriple patterns with not subject and predicate are not supported");
+            long[] prefix = (obj == null) ? EMPTY_ARRAY : new long[]{valueFactory.encodeValue(obj)};
+            return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
+                    prefix,
+                    (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatOspTriple(triple, revisionIri)).iterator()));
           } else {
             long[] prefix = (obj == null)
                     ? new long[]{valueFactory.encodeValue(pred)}
@@ -248,23 +252,20 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
                     (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatPosTriple(triple, revisionIri)).iterator()));
           }
         } else {
-          long[] prefix = (pred == null)
-                  ? new long[]{valueFactory.encodeValue(subj)}
-                  : (obj == null)
-                  ? new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)}
-                  : new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred), valueFactory.encodeValue(obj)};
-          CloseableIteration<Statement, QueryEvaluationException> result = new FlatMapClosableIteration<>(spoStatementIndex.longPrefixIteration(
-                  prefix,
-                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatSpoTriple(triple, revisionIri)).iterator()));
-          if (pred == null && obj != null) {
-            return new FilterIteration<Statement, QueryEvaluationException>(result) {
-              @Override
-              protected boolean accept(Statement statement) throws QueryEvaluationException {
-                return statement.getObject().equals(obj);
-              }
-            };
+          if (obj == null) {
+            long[] prefix = pred == null
+                    ? new long[]{valueFactory.encodeValue(subj)}
+                    : new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)};
+            return new FlatMapClosableIteration<>(spoStatementIndex.longPrefixIteration(
+                    prefix,
+                    (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatSpoTriple(triple, revisionIri)).iterator()));
           } else {
-            return result;
+            long[] prefix = pred == null
+                    ? new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj)}
+                    : new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)};
+            return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
+                    prefix,
+                    (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatOspTriple(triple, revisionIri)).iterator()));
           }
         }
       } catch (NotSupportedValueException e) {
@@ -327,6 +328,19 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
               (Resource) valueFactory.createValue(triple[2]),
               (IRI) valueFactory.createValue(triple[0]),
               valueFactory.createValue(triple[1]),
+              context
+      );
+    } catch (NotSupportedValueException e) {
+      throw new QueryEvaluationException(e);
+    }
+  }
+
+  private Statement formatOspTriple(long[] triple, Resource context) {
+    try {
+      return valueFactory.createStatement(
+              (Resource) valueFactory.createValue(triple[1]),
+              (IRI) valueFactory.createValue(triple[2]),
+              valueFactory.createValue(triple[0]),
               context
       );
     } catch (NotSupportedValueException e) {

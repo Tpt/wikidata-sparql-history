@@ -41,9 +41,11 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
   private static final byte SMALL_LONG_DECIMAL_TYPE = 8;
   private static final byte SMALL_LONG_INTEGER_TYPE = 9;
   private static final byte SMALL_STRING_TYPE = 10;
+  private static final byte REVISION_ID_TYPE = 11;
   private static final long LANGUAGE_TAG_SHIFT = Short.MAX_VALUE + 1;
   private static final long DATATYPE_SHIFT = Short.MAX_VALUE + 1;
   private static final long PROPERTY_TYPE_SHIFT = 32;
+  private static final long SNAPSHOT_TYPE_SHIFT = 4;
   private static final long MAX_ENCODED_VALUE = Long.MAX_VALUE / TYPE_SHIFT;
   private static final long MIN_ENCODED_VALUE = Long.MIN_VALUE / TYPE_SHIFT;
 
@@ -155,6 +157,8 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
         return new SmallLongDecimalLiteral(value);
       case SMALL_LONG_INTEGER_TYPE:
         return new SmallLongIntegerLiteral(value);
+      case REVISION_ID_TYPE:
+        return new RevisionIRI(value);
       default:
         throw new NotSupportedValueException("Unknown type id: " + type);
     }
@@ -579,13 +583,17 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     return new RevisionIRI(value, snapshotType);
   }
 
-  static final class RevisionIRI implements IRI {
+  static final class RevisionIRI implements IRI, NumericValue {
     private final long revisionId;
     private final Vocabulary.SnapshotType snapshotType;
 
     private RevisionIRI(long revisionId, Vocabulary.SnapshotType snapshotType) {
       this.revisionId = revisionId;
       this.snapshotType = snapshotType;
+    }
+
+    private RevisionIRI(long value) {
+      this(value / SNAPSHOT_TYPE_SHIFT, SNAPSHOT_TYPES[(int) Math.abs(value % SNAPSHOT_TYPE_SHIFT)]);
     }
 
     long getRevisionId() {
@@ -654,7 +662,14 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     public int hashCode() {
       return Long.hashCode(revisionId);
     }
+
+    @Override
+    public long encode() {
+      return compose(compose(revisionId, SNAPSHOT_TYPE_SHIFT, snapshotType.ordinal()), TYPE_SHIFT, REVISION_ID_TYPE);
+    }
   }
+
+  private static final Vocabulary.SnapshotType[] SNAPSHOT_TYPES = Vocabulary.SnapshotType.values();
 
   private static final class DictionaryIRI implements IRI, NumericValue {
     private final long id;

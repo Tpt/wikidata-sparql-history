@@ -23,6 +23,10 @@ public class NumericValueFactoryTest {
     testIRIConversion(Vocabulary.P_NAMESPACE + "P42", valueFactory);
     testIRIConversion(Vocabulary.PS_NAMESPACE + "P42", valueFactory);
     testIRIConversion(Vocabulary.PQV_NAMESPACE + "P42", valueFactory);
+    testIRIConversion(Vocabulary.REVISION_NAMESPACE + "123", valueFactory);
+    testIRIConversion(Vocabulary.REVISION_GLOBAL_STATE_NAMESPACE + "123", valueFactory);
+    testIRIConversion(Vocabulary.REVISION_ADDITIONS_NAMESPACE + "123", valueFactory);
+    testIRIConversion(Vocabulary.REVISION_DELETIONS_NAMESPACE + "123", valueFactory);
     testIRIConversion("http://example.com", valueFactory);
     //TODO: revision IRI
   }

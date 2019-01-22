@@ -105,18 +105,34 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
       if (revisionIri == null) {
         return new EmptyIteration<>(); //Invalid revision IRI
       } else {
-        return getStatementsForBasicRelation(subj, pred, obj, revisionIri);
+        return getStatementsForBasicRelationWithGuess(subj, pred, obj, revisionIri);
       }
     } else if (pred == null) {
       return new UnionIteration<>(Stream.concat(
               magicPredicates.values().stream().map(predicate -> predicate.getStatements(subj, obj)),
-              Stream.of(getStatementsForBasicRelation(subj, null, obj, null))
+              Stream.of(getStatementsForBasicRelationWithGuess(subj, null, obj, null))
       ).collect(Collectors.toList()));
     } else if (magicPredicates.containsKey(pred)) {
       return magicPredicates.get(pred).getStatements(subj, obj);
     } else {
-      return getStatementsForBasicRelation(subj, pred, obj, null);
+      return getStatementsForBasicRelationWithGuess(subj, pred, obj, null);
     }
+  }
+
+  private CloseableIteration<Statement, QueryEvaluationException> getStatementsForBasicRelationWithGuess(Resource subj, IRI pred, Value obj, NumericValueFactory.RevisionIRI revisionIri) {
+    // If we have a context we could restrict our triples patterns to triples in this context
+    //TODO: very hacky guess, only works if we have wdt: and owl:sameAs relations
+    if (
+            subj == null && revisionIri != null &&
+                    (revisionIri.getSnapshotType() == Vocabulary.SnapshotType.ADDITIONS || revisionIri.getSnapshotType() == Vocabulary.SnapshotType.DELETIONS)
+    ) {
+      try {
+        subj = (Resource) valueFactory.createValue(revisionTopicIndex.get(revisionIri.getRevisionId()));
+      } catch (NotSupportedValueException e) {
+        LOGGER.info(e.getMessage(), e);
+      }
+    }
+    return getStatementsForBasicRelation(subj, pred, obj, revisionIri);
   }
 
   private CloseableIteration<Statement, QueryEvaluationException> getStatementsForBasicRelation(Resource subj, IRI pred, Value obj, NumericValueFactory.RevisionIRI revisionIri) {

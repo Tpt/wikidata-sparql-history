@@ -86,9 +86,27 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   public CloseableIteration<Statement, QueryEvaluationException> getStatements(
           Resource subj, IRI pred, Value obj, Resource... contexts
   ) throws QueryEvaluationException {
-    NumericValueFactory.RevisionIRI[] revisionIris = getRevisionIris(contexts);
-    if (revisionIris != null) {
-      return getStatementsForBasicRelation(subj, pred, obj, revisionIris);
+    if (contexts == null || contexts.length == 0) {
+      return getStatements(subj, pred, obj, (Resource) null);
+    } else if (contexts.length == 1) {
+      return getStatements(subj, pred, obj, contexts[0]);
+    } else {
+      List<CloseableIteration<Statement, QueryEvaluationException>> results = new ArrayList<>(contexts.length);
+      for (Resource context : contexts) {
+        results.add(getStatements(subj, pred, obj, context));
+      }
+      return new UnionIteration<>(results);
+    }
+  }
+
+  private CloseableIteration<Statement, QueryEvaluationException> getStatements(Resource subj, IRI pred, Value obj, Resource context) throws QueryEvaluationException {
+    if (context != null) {
+      NumericValueFactory.RevisionIRI revisionIri = convertRevisionIRI(context);
+      if (revisionIri == null) {
+        return new EmptyIteration<>(); //Invalid revision IRI
+      } else {
+        return getStatementsForBasicRelation(subj, pred, obj, revisionIri);
+      }
     } else if (pred == null) {
       return new UnionIteration<>(Stream.concat(
               magicPredicates.values().stream().map(predicate -> predicate.getStatements(subj, obj)),
@@ -101,21 +119,21 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     }
   }
 
-  private CloseableIteration<Statement, QueryEvaluationException> getStatementsForBasicRelation(Resource subj, IRI pred, Value obj, NumericValueFactory.RevisionIRI[] revisionIris) {
+  private CloseableIteration<Statement, QueryEvaluationException> getStatementsForBasicRelation(Resource subj, IRI pred, Value obj, NumericValueFactory.RevisionIRI revisionIri) {
     try {
       if (subj == null) {
         if (pred == null) {
           long[] prefix = (obj == null) ? EMPTY_ARRAY : new long[]{valueFactory.encodeValue(obj)};
           return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
                   prefix,
-                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatOspTriple(triple, revisionIri)).iterator()));
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIri).map(rev -> formatOspTriple(triple, rev)).iterator()));
         } else {
           long[] prefix = (obj == null)
                   ? new long[]{valueFactory.encodeValue(pred)}
                   : new long[]{valueFactory.encodeValue(pred), valueFactory.encodeValue(obj)};
           return new FlatMapClosableIteration<>(posStatementIndex.longPrefixIteration(
                   prefix,
-                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatPosTriple(triple, revisionIri)).iterator()));
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIri).map(rev -> formatPosTriple(triple, rev)).iterator()));
         }
       } else {
         if (obj == null) {
@@ -124,26 +142,19 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
                   : new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)};
           return new FlatMapClosableIteration<>(spoStatementIndex.longPrefixIteration(
                   prefix,
-                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatSpoTriple(triple, revisionIri)).iterator()));
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIri).map(rev -> formatSpoTriple(triple, rev)).iterator()));
         } else {
           long[] prefix = pred == null
                   ? new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj)}
                   : new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)};
           return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
                   prefix,
-                  (triple, revisions) -> revisionsInExpected(revisions, revisionIris).map(revisionIri -> formatOspTriple(triple, revisionIri)).iterator()));
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIri).map(rev -> formatOspTriple(triple, rev)).iterator()));
         }
       }
     } catch (NotSupportedValueException e) {
       throw new QueryEvaluationException(e);
     }
-  }
-
-  private NumericValueFactory.RevisionIRI[] getRevisionIris(Resource... contexts) {
-    if (contexts == null || contexts.length == 0) {
-      return null;
-    }
-    return Arrays.stream(contexts).map(this::convertRevisionIRI).toArray(NumericValueFactory.RevisionIRI[]::new);
   }
 
   private Statement formatSpoTriple(long[] triple, Resource context) {
@@ -185,10 +196,10 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     }
   }
 
-  private Stream<NumericValueFactory.RevisionIRI> revisionsInExpected(long[] actualRevisions, NumericValueFactory.RevisionIRI[] expectedRevisionRange) {
-    return (expectedRevisionRange == null)
+  private Stream<NumericValueFactory.RevisionIRI> revisionsInExpected(long[] actualRevisions, NumericValueFactory.RevisionIRI expectedRevision) {
+    return (expectedRevision == null)
             ? boundRevisionOfRange(actualRevisions)
-            : Arrays.stream(expectedRevisionRange).filter(revisionIri -> isInRanges(revisionIri, actualRevisions));
+            : isInRanges(expectedRevision, actualRevisions) ? Stream.of(expectedRevision) : Stream.empty();
   }
 
   private Stream<NumericValueFactory.RevisionIRI> boundRevisionOfRange(long[] revisionRange) {
@@ -203,14 +214,6 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   }
 
   private NumericValueFactory.RevisionIRI convertRevisionIRI(Value revisionIRI) {
-    NumericValueFactory.RevisionIRI result = convertRevisionIRINullable(revisionIRI);
-    if (result == null) {
-      throw new QueryEvaluationException("Not supported revision IRI: " + revisionIRI);
-    }
-    return result;
-  }
-
-  private NumericValueFactory.RevisionIRI convertRevisionIRINullable(Value revisionIRI) {
     if (!(revisionIRI instanceof NumericValueFactory.RevisionIRI) && revisionIRI instanceof IRI) {
       revisionIRI = valueFactory.createIRI((IRI) revisionIRI);
     }
@@ -301,7 +304,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
       if (subj == null) {
         return getStatements(null, obj);
       } else {
-        NumericValueFactory.RevisionIRI revision = convertRevisionIRINullable(subj);
+        NumericValueFactory.RevisionIRI revision = convertRevisionIRI(subj);
         if (revision == null) {
           return EMPTY_ITERATION;
         }
@@ -323,13 +326,13 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
         if (obj == null) {
           return getStatements();
         }
-        NumericValueFactory.RevisionIRI objRevision = convertRevisionIRINullable(obj);
+        NumericValueFactory.RevisionIRI objRevision = convertRevisionIRI(obj);
         if (objRevision == null) {
           return EMPTY_ITERATION;
         }
         return getStatementsForObject(objRevision);
       } else {
-        NumericValueFactory.RevisionIRI subjRevision = convertRevisionIRINullable(subj);
+        NumericValueFactory.RevisionIRI subjRevision = convertRevisionIRI(subj);
         if (subjRevision == null) {
           return EMPTY_ITERATION;
         }
@@ -337,7 +340,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
           return getStatementsForSubject(subjRevision);
         }
 
-        NumericValueFactory.RevisionIRI objRevision = convertRevisionIRINullable(obj);
+        NumericValueFactory.RevisionIRI objRevision = convertRevisionIRI(obj);
         if (objRevision == null) {
           return EMPTY_ITERATION;
         }

@@ -44,7 +44,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 class SparqlEndpoint {
-  private static final int QUERY_TIMOUT_IN_S = 30;
+  private static final int QUERY_TIMOUT_IN_S = 60 * 5;
   private static final Logger LOGGER = LoggerFactory.getLogger(SparqlEndpoint.class);
 
   private final QueryParser queryParser = new SPARQLParser();

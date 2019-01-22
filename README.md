@@ -35,6 +35,17 @@ SELECT (COUNT(?user) AS ?count) WHERE {
 }
 ```
 
+Statistics on the number of main snak additions by property for user Tpt:
+```sparql
+SELECT ?prop (COUNT(?revision) AS ?c) WHERE {
+  ?revision schema:author "Tpt" ;
+            hist:additions ?additionsGraph .
+  GRAPH ?additionsGraph {
+     ?topic ?prop ?o .
+  }
+} GROUP BY ?prop ORDER BY DESC(COUNT(?revision))
+```
+
 These queries assumes the following prefixes:
 ```sparql
 PREFIX schema: <http://schema.org/>

@@ -13,6 +13,7 @@
 <script src='//tools-static.wmflabs.org/cdnjs/ajax/libs/yasr/2.12.19/yasr.bundled.min.js'></script>
 <script src='//tools-static.wmflabs.org/cdnjs/ajax/libs/yasqe/2.11.22/yasqe.bundled.min.js'></script>
 <script>
+    YASQE.Autocompleters.prefixes.fetchFrom = '/prefixes';
     var yasqe = YASQE(document.getElementById("yasqe"), {
         sparql: {
             showQueryButton: true,
@@ -20,8 +21,8 @@
         }
     });
     var yasr = YASR(document.getElementById("yasr"), {
-        //this way, the URLs in the results are prettified using the defined prefixes in the query
-        getUsedPrefixes: yasqe.getPrefixesFromQuery
+        getUsedPrefixes: yasqe.getPrefixesFromQuery,
+        useGoogleCharts: false
     });
     //link both together
     yasqe.options.sparql.callbacks.complete = yasr.setResponse;

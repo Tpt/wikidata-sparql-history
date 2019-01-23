@@ -43,6 +43,7 @@ public class Main {
             .get("", ctx -> ctx.contentType("text/html").result(Main.class.getResourceAsStream("/index.html")))
             .get("/sparql", sparqlEndpoint::get)
             .post("/sparql", sparqlEndpoint::post)
+            .get("/prefixes", ctx -> ctx.contentType("application/json").result(Main.class.getResourceAsStream("/prefixes.json")))
             .start(port);
   }
 }

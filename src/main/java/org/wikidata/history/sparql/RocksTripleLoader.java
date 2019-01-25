@@ -43,6 +43,9 @@ public final class RocksTripleLoader implements AutoCloseable {
     } catch (NotSupportedValueException e) {
       // Should never happen
     }
+    
+    LOGGER.info("Compacting store");
+    store.compact();
   }
 
   private BufferedReader gzipReader(Path path) throws IOException {
@@ -77,9 +80,6 @@ public final class RocksTripleLoader implements AutoCloseable {
         }
       });
     }
-
-    LOGGER.info("Compacting store");
-    store.compact();
   }
 
   private void computeClosure(long property, long targetProperty, RocksStore.Index<long[], long[]> spoIndex, RocksStore.Index<long[], long[]> posIndex, RocksStore.Index<long[], long[]> ospIndex) {

@@ -159,13 +159,20 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
           return new FlatMapClosableIteration<>(spoStatementIndex.longPrefixIteration(
                   prefix,
                   (triple, revisions) -> revisionsInExpected(revisions, revisionIri).map(rev -> formatSpoTriple(triple, rev)).iterator()));
-        } else {
-          long[] prefix = pred == null
-                  ? new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj)}
-                  : new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj), valueFactory.encodeValue(pred)};
+        } else if (pred == null) {
+          long[] prefix = new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj)};
           return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
                   prefix,
-                  (triple, revisions) -> revisionsInExpected(revisions, revisionIri).map(rev -> formatOspTriple(triple, rev)).iterator()));
+                  (triple, revisions) -> {
+                    System.out.println(Arrays.toString(triple));
+                    return revisionsInExpected(revisions, revisionIri).map(rev -> formatOspTriple(triple, rev)).iterator();
+                  }));
+        } else {
+          long[] triple = new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred), valueFactory.encodeValue(obj)};
+          long[] revisions = spoStatementIndex.get(triple);
+          return (revisions == null)
+                  ? EMPTY_ITERATION
+                  : new CloseableIteratorIteration<>(revisionsInExpected(revisions, revisionIri).map(rev -> formatSpoTriple(triple, rev)).iterator());
         }
       }
     } catch (NotSupportedValueException e) {

@@ -126,10 +126,13 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
             subj == null && revisionIri != null &&
                     (revisionIri.getSnapshotType() == Vocabulary.SnapshotType.ADDITIONS || revisionIri.getSnapshotType() == Vocabulary.SnapshotType.DELETIONS)
     ) {
-      try {
-        subj = (Resource) valueFactory.createValue(revisionTopicIndex.get(revisionIri.getRevisionId()));
-      } catch (NotSupportedValueException e) {
-        LOGGER.info(e.getMessage(), e);
+      Long topic = revisionTopicIndex.get(revisionIri.getRevisionId());
+      if (topic != null) {
+        try {
+          subj = (Resource) valueFactory.createValue(topic);
+        } catch (NotSupportedValueException e) {
+          LOGGER.info(e.getMessage(), e);
+        }
       }
     }
     return getStatementsForBasicRelation(subj, pred, obj, revisionIri);
@@ -163,10 +166,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
           long[] prefix = new long[]{valueFactory.encodeValue(obj), valueFactory.encodeValue(subj)};
           return new FlatMapClosableIteration<>(ospStatementIndex.longPrefixIteration(
                   prefix,
-                  (triple, revisions) -> {
-                    System.out.println(Arrays.toString(triple));
-                    return revisionsInExpected(revisions, revisionIri).map(rev -> formatOspTriple(triple, rev)).iterator();
-                  }));
+                  (triple, revisions) -> revisionsInExpected(revisions, revisionIri).map(rev -> formatOspTriple(triple, rev)).iterator()));
         } else {
           long[] triple = new long[]{valueFactory.encodeValue(subj), valueFactory.encodeValue(pred), valueFactory.encodeValue(obj)};
           long[] revisions = spoStatementIndex.get(triple);

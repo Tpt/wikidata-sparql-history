@@ -234,16 +234,26 @@ public class RocksStore implements AutoCloseable {
     }
 
     <E, X extends Exception> CloseableIteration<E, X> prefixIteration(byte[] prefix, FailingKVMappingFunction<K, V, E, X> mappingFunction) {
-      RocksIterator iterator = db.newIterator(columnFamilyHandle);
-      iterator.seek(prefix);
-      return new RocksMappingIteration<>(iterator, prefix, keySerializer, valueSerializer, mappingFunction);
+      try {
+        RocksIterator iterator = db.newIterator(columnFamilyHandle);
+        iterator.seek(prefix);
+        iterator.status();
+        return new RocksMappingIteration<>(iterator, prefix, keySerializer, valueSerializer, mappingFunction);
+      } catch (RocksDBException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     Iterator<Map.Entry<K, V>> longPrefixIterator(long[] prefix) {
-      RocksIterator iterator = db.newIterator(columnFamilyHandle);
-      byte[] rawPrefix = LONG_ARRAY_SERIALIZER.serialize(prefix);
-      iterator.seek(rawPrefix);
-      return new RocksSimpleIterator<>(iterator, rawPrefix, keySerializer, valueSerializer);
+      try {
+        RocksIterator iterator = db.newIterator(columnFamilyHandle);
+        byte[] rawPrefix = LONG_ARRAY_SERIALIZER.serialize(prefix);
+        iterator.seek(rawPrefix);
+        iterator.status();
+        return new RocksSimpleIterator<>(iterator, rawPrefix, keySerializer, valueSerializer);
+      } catch (RocksDBException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
@@ -465,9 +475,6 @@ public class RocksStore implements AutoCloseable {
       this.keySerializer = keySerializer;
       this.valueSerializer = valueSerializer;
       this.mappingFunction = mappingFunction;
-
-      //We start the iteration
-      iterator.next();
     }
 
     @Override
@@ -526,9 +533,6 @@ public class RocksStore implements AutoCloseable {
       this.prefix = prefix;
       this.keySerializer = keySerializer;
       this.valueSerializer = valueSerializer;
-
-      //We start the iteration
-      iterator.next();
     }
 
     @Override

@@ -62,7 +62,7 @@ public class RocksTripleSourceTest {
         long p = factory.encodeValue(statement.getPredicate());
         long o = factory.encodeValue(statement.getObject());
         long revision = Long.valueOf(((IRI) statement.getContext()).getLocalName());
-        long[] value = new long[]{revision, revision};
+        long[] value = new long[]{revision, revision + 1};
         store.spoStatementIndex().put(new long[]{s, p, o}, value);
         store.posStatementIndex().put(new long[]{p, o, s}, value);
         store.ospStatementIndex().put(new long[]{o, s, p}, value);
@@ -82,15 +82,45 @@ public class RocksTripleSourceTest {
       assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035")), 2);
       assertLength(tripleSource.getStatements(null, null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035")), 2);
 
-      Resource[] revision = new Resource[]{VALUE_FACTORY.createIRI(Vocabulary.REVISION_ADDITIONS_NAMESPACE, "42")};
-      assertLength(tripleSource.getStatements(null, null, null, revision), 4);
-      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, null, revision), 4);
-      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, revision), 2);
-      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), revision), 1);
-      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), revision), 1);
-      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, revision), 2);
-      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), revision), 1);
-      assertLength(tripleSource.getStatements(null, null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), revision), 1);
+      Resource[] insertionRevision = new Resource[]{VALUE_FACTORY.createIRI(Vocabulary.REVISION_ADDITIONS_NAMESPACE, "42")};
+      assertLength(tripleSource.getStatements(null, null, null, insertionRevision), 4);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, null, insertionRevision), 4);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, insertionRevision), 2);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), insertionRevision), 1);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), insertionRevision), 1);
+      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, insertionRevision), 2);
+      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), insertionRevision), 1);
+      assertLength(tripleSource.getStatements(null, null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), insertionRevision), 1);
+
+      Resource[] globalState1Revision = new Resource[]{VALUE_FACTORY.createIRI(Vocabulary.REVISION_GLOBAL_STATE_NAMESPACE, "42")};
+      assertLength(tripleSource.getStatements(null, null, null, globalState1Revision), 4);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, null, globalState1Revision), 4);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, globalState1Revision), 2);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), globalState1Revision), 1);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), globalState1Revision), 1);
+      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, globalState1Revision), 2);
+      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), globalState1Revision), 1);
+      assertLength(tripleSource.getStatements(null, null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), globalState1Revision), 1);
+
+      Resource[] globalState2Revision = new Resource[]{VALUE_FACTORY.createIRI(Vocabulary.REVISION_GLOBAL_STATE_NAMESPACE, "43")};
+      assertLength(tripleSource.getStatements(null, null, null, globalState2Revision), 0);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, null, globalState2Revision), 0);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, globalState2Revision), 0);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), globalState2Revision), 0);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), globalState2Revision), 0);
+      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, globalState2Revision), 0);
+      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), globalState2Revision), 0);
+      assertLength(tripleSource.getStatements(null, null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), globalState2Revision), 0);
+
+      Resource[] deletionRevision = new Resource[]{VALUE_FACTORY.createIRI(Vocabulary.REVISION_DELETIONS_NAMESPACE, "43")};
+      assertLength(tripleSource.getStatements(null, null, null, deletionRevision), 4);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, null, deletionRevision), 4);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, deletionRevision), 2);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), deletionRevision), 1);
+      assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), deletionRevision), 1);
+      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, deletionRevision), 2);
+      assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), deletionRevision), 1);
+      assertLength(tripleSource.getStatements(null, null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), deletionRevision), 1);
 
     }
   }

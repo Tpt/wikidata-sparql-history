@@ -33,6 +33,8 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   private final RocksStore.Index<long[], long[]> spoStatementIndex;
   private final RocksStore.Index<long[], long[]> posStatementIndex;
   private final RocksStore.Index<long[], long[]> ospStatementIndex;
+  private final RocksStore.Index<Long, long[]> insertedStatementIndex;
+  private final RocksStore.Index<Long, long[]> deletedStatementIndex;
   private final NumericValueFactory valueFactory;
   private final Map<IRI, MagicPredicate> magicPredicates = new HashMap<>();
 
@@ -49,6 +51,8 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     spoStatementIndex = store.spoStatementIndex();
     posStatementIndex = store.posStatementIndex();
     ospStatementIndex = store.ospStatementIndex();
+    insertedStatementIndex = store.insertedStatementIndex();
+    deletedStatementIndex = store.deletedStatementIndex();
     valueFactory = new NumericValueFactory(store.getReadOnlyStringStore());
     registerMagicPredicates();
   }
@@ -121,21 +125,14 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
 
   private CloseableIteration<Statement, QueryEvaluationException> getStatementsForBasicRelationWithGuess(Resource subj, IRI pred, Value obj, NumericValueFactory.RevisionIRI revisionIri) {
     // If we have a context we could restrict our triples patterns to triples in this context
-    //TODO: very hacky guess, only works if we have wdt: and owl:sameAs relations
-    if (
-            subj == null && revisionIri != null &&
-                    (revisionIri.getSnapshotType() == Vocabulary.SnapshotType.ADDITIONS || revisionIri.getSnapshotType() == Vocabulary.SnapshotType.DELETIONS)
-    ) {
-      Long topic = revisionTopicIndex.get(revisionIri.getRevisionId());
-      if (topic != null) {
-        try {
-          subj = (Resource) valueFactory.createValue(topic);
-        } catch (NotSupportedValueException e) {
-          LOGGER.info(e.getMessage(), e);
-        }
-      }
+    if (revisionIri != null && revisionIri.getSnapshotType() == Vocabulary.SnapshotType.ADDITIONS) {
+      return getStatementsInTripleListIndex(subj, pred, obj, revisionIri, insertedStatementIndex);
     }
-    return getStatementsForBasicRelation(subj, pred, obj, revisionIri);
+    if (revisionIri != null && revisionIri.getSnapshotType() == Vocabulary.SnapshotType.DELETIONS) {
+      return getStatementsInTripleListIndex(subj, pred, obj, revisionIri, deletedStatementIndex);
+    } else {
+      return getStatementsForBasicRelation(subj, pred, obj, revisionIri);
+    }
   }
 
   private CloseableIteration<Statement, QueryEvaluationException> getStatementsForBasicRelation(Resource subj, IRI pred, Value obj, NumericValueFactory.RevisionIRI revisionIri) {
@@ -175,6 +172,21 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
                   : new CloseableIteratorIteration<>(revisionsInExpected(revisions, revisionIri).map(rev -> formatSpoTriple(triple, rev)).iterator());
         }
       }
+    } catch (NotSupportedValueException e) {
+      throw new QueryEvaluationException(e);
+    }
+  }
+
+  private CloseableIteration<Statement, QueryEvaluationException> getStatementsInTripleListIndex(Resource subj, IRI pred, Value obj, NumericValueFactory.RevisionIRI revisionIri, RocksStore.Index<Long, long[]> index) {
+    long[] triples = index.get(revisionIri.getRevisionId());
+    if (triples == null) {
+      return EMPTY_ITERATION;
+    }
+    try {
+      Long s = (subj == null) ? null : valueFactory.encodeValue(subj);
+      Long p = (pred == null) ? null : valueFactory.encodeValue(pred);
+      Long o = (obj == null) ? null : valueFactory.encodeValue(obj);
+      return new TripleListIteration(triples, valueFactory, s, p, o, revisionIri);
     } catch (NotSupportedValueException e) {
       throw new QueryEvaluationException(e);
     }
@@ -300,6 +312,65 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
     @Override
     public void close() throws X {
       iter.close();
+    }
+  }
+
+  private static class TripleListIteration implements CloseableIteration<Statement, QueryEvaluationException> {
+    private final long[] triples;
+    private final NumericValueFactory valueFactory;
+    private final Long subject;
+    private final Long predicate;
+    private final Long object;
+    private final Resource context;
+    private int position = 0;
+
+    TripleListIteration(long[] triples, NumericValueFactory valueFactory, Long subject, Long predicate, Long object, Resource context) {
+      this.triples = triples;
+      this.valueFactory = valueFactory;
+      this.subject = subject;
+      this.predicate = predicate;
+      this.object = object;
+      this.context = context;
+    }
+
+    @Override
+    public boolean hasNext() {
+      while (
+              position < triples.length && (
+                      (subject != null && triples[position] != subject) ||
+                              (predicate != null && triples[position + 1] != predicate) ||
+                              (object != null && triples[position + 2] != object)
+              )) {
+        position += 3;
+      }
+      return position < triples.length;
+    }
+
+    @Override
+    public Statement next() throws QueryEvaluationException {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      try {
+        return valueFactory.createStatement(
+                (Resource) valueFactory.createValue(triples[position]),
+                (IRI) valueFactory.createValue(triples[position + 1]),
+                valueFactory.createValue(triples[position + 2]),
+                context
+        );
+      } catch (NotSupportedValueException e) {
+        throw new QueryEvaluationException(e);
+      } finally {
+        position += 3;
+      }
+    }
+
+    @Override
+    public void remove() {
+    }
+
+    @Override
+    public void close() {
     }
   }
 

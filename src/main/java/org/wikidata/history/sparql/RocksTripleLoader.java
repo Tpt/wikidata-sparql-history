@@ -21,6 +21,8 @@ public final class RocksTripleLoader implements AutoCloseable {
   private final RocksStore.Index<long[], long[]> spoIndex;
   private final RocksStore.Index<long[], long[]> posIndex;
   private final RocksStore.Index<long[], long[]> ospIndex;
+  private final RocksStore.Index<Long, long[]> insertedStatement;
+  private final RocksStore.Index<Long, long[]> deletedStatement;
 
   public RocksTripleLoader(Path path) {
     store = new RocksStore(path, false);
@@ -28,6 +30,8 @@ public final class RocksTripleLoader implements AutoCloseable {
     spoIndex = store.spoStatementIndex();
     posIndex = store.posStatementIndex();
     ospIndex = store.ospStatementIndex();
+    insertedStatement = store.insertedStatementIndex();
+    deletedStatement = store.deletedStatementIndex();
   }
 
   public void load(Path file) throws IOException {
@@ -130,6 +134,45 @@ public final class RocksTripleLoader implements AutoCloseable {
     spoIndex.put(spoTriple, range);
     posIndex.put(posTriple, range);
     ospIndex.put(ospTriple, range);
+
+    // Range additions
+    for (int i = 0; i < range.length; i += 2) {
+      addToStatementListIndex(insertedStatement, range[i], spoTriple);
+      if (range[i + 1] != Long.MAX_VALUE) {
+        addToStatementListIndex(deletedStatement, range[i + 1], spoTriple);
+      }
+    }
+
+    // Range deletions
+    if (existingRange != null) {
+      for (int i = 0; i < existingRange.length; i += 2) {
+        if (!LongRangeUtils.isRangeStart(existingRange[i], range)) {
+          removeFromStatementListIndex(insertedStatement, existingRange[i], spoTriple);
+        }
+        if (!LongRangeUtils.isRangeEnd(existingRange[i + 1], range) && existingRange[i + 1] != Long.MAX_VALUE) {
+          removeFromStatementListIndex(deletedStatement, existingRange[i + 1], spoTriple);
+        }
+      }
+    }
+  }
+
+  private static void addToStatementListIndex(RocksStore.Index<Long, long[]> index, long key, long[] triple) {
+    long[] existingTriples = index.get(key);
+    long[] newTriples = (existingTriples == null) ? triple : TripleArrayUtils.addToSortedArray(existingTriples, triple);
+    if (newTriples != existingTriples) {
+      index.put(key, newTriples);
+    }
+  }
+
+  private static void removeFromStatementListIndex(RocksStore.Index<Long, long[]> index, long key, long[] triple) {
+    long[] existingTriples = index.get(key);
+    if (existingTriples == null) {
+      return;
+    }
+    long[] newTriples = TripleArrayUtils.removeFromSortedArray(existingTriples, triple);
+    if (newTriples != existingTriples) {
+      index.put(key, newTriples);
+    }
   }
 
   @Override

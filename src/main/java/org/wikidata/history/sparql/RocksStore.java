@@ -28,6 +28,8 @@ public class RocksStore implements AutoCloseable {
   private static final byte[] STATEMENT_SPO = "statement_spo".getBytes();
   private static final byte[] STATEMENT_POS = "statement_pos".getBytes();
   private static final byte[] STATEMENT_OSP = "statement_osp".getBytes();
+  private static final byte[] STATEMENT_INSERTED = "statement_inserted".getBytes();
+  private static final byte[] STATEMENT_DELETED = "statement_deleted".getBytes();
   private static final byte[][] COLUMN_FAMILIES = new byte[][]{
           RocksDB.DEFAULT_COLUMN_FAMILY,
           ID_FOR_STR_COLUMN_NAME,
@@ -44,7 +46,9 @@ public class RocksStore implements AutoCloseable {
           CONTRIBUTOR_REVISIONS,
           STATEMENT_SPO,
           STATEMENT_POS,
-          STATEMENT_OSP
+          STATEMENT_OSP,
+          STATEMENT_INSERTED,
+          STATEMENT_DELETED
   };
   private static final byte[] EMPTY_ARRAY = new byte[]{};
 
@@ -144,6 +148,14 @@ public class RocksStore implements AutoCloseable {
 
   Index<long[], long[]> ospStatementIndex() {
     return newIndex(STATEMENT_OSP, LONG_ARRAY_SERIALIZER, LONG_ARRAY_SERIALIZER);
+  }
+
+  Index<Long, long[]> insertedStatementIndex() {
+    return newIndex(STATEMENT_INSERTED, LONG_SERIALIZER, LONG_ARRAY_SERIALIZER);
+  }
+
+  Index<Long, long[]> deletedStatementIndex() {
+    return newIndex(STATEMENT_DELETED, LONG_SERIALIZER, LONG_ARRAY_SERIALIZER);
   }
 
   private <K, V> Index<K, V> newIndex(byte[] columnName, Serializer<K> keySerializer, Serializer<V> valueSerializer) {

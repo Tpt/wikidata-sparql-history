@@ -66,7 +66,17 @@ public class RocksTripleSourceTest {
         store.spoStatementIndex().put(new long[]{s, p, o}, value);
         store.posStatementIndex().put(new long[]{p, o, s}, value);
         store.ospStatementIndex().put(new long[]{o, s, p}, value);
+        addToStatementListIndex(store.insertedStatementIndex(), revision, new long[]{s, p, o});
+        addToStatementListIndex(store.deletedStatementIndex(), revision + 1, new long[]{s, p, o});
       }
+    }
+  }
+
+  private static void addToStatementListIndex(RocksStore.Index<Long, long[]> index, long key, long[] triple) {
+    long[] existingTriples = index.get(key);
+    long[] newTriples = (existingTriples == null) ? triple : TripleArrayUtils.addToSortedArray(existingTriples, triple);
+    if (newTriples != existingTriples) {
+      index.put(key, newTriples);
     }
   }
 

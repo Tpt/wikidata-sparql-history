@@ -52,9 +52,7 @@ public final class Vocabulary {
   public static final String REVISION_GLOBAL_STATE_NAMESPACE = REVISION_NAMESPACE + "global/";
 
   public static final IRI CURRENT_GLOBAL_STATE = VALUE_FACTORY.createIRI(REVISION_GLOBAL_STATE_NAMESPACE, Long.toString(Long.MAX_VALUE / 256));
-
-  static final IRI P279_CLOSURE = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "p279Closure");
-
+  
   private static final Set<String> REVISION_NAMESPACES = Sets.newHashSet(REVISION_NAMESPACE, REVISION_GLOBAL_STATE_NAMESPACE, REVISION_ADDITIONS_NAMESPACE, REVISION_DELETIONS_NAMESPACE);
 
   public static IRI toDirectProperty(IRI propertyIri) {

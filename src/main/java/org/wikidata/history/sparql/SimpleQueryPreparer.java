@@ -18,7 +18,6 @@ import org.eclipse.rdf4j.repository.sparql.federation.SPARQLServiceResolver;
 public final class SimpleQueryPreparer extends AbstractQueryPreparer {
   private static final QueryOptimizer[] SIMPLE_OPTIMIZERS = new QueryOptimizer[]{
           new PropertyPathOptimizer(),
-          new KnownClosureOptimizer(),
           new BindingAssigner(),
           new CompareOptimizer(),
           new ConjunctiveConstraintSplitter(),

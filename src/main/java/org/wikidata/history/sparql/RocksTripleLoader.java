@@ -38,15 +38,6 @@ public final class RocksTripleLoader implements AutoCloseable {
     LOGGER.info("Loading triples");
     loadTriples(file);
 
-    try {
-      LOGGER.info("Computing P279 closure");
-      computeClosure(
-              valueFactory.encodeValue(valueFactory.createIRI(Vocabulary.WDT_NAMESPACE, "P279")),
-              valueFactory.encodeValue(Vocabulary.P279_CLOSURE));
-    } catch (NotSupportedValueException e) {
-      // Should never happen
-    }
-
     LOGGER.info("Compacting store");
     store.compact();
   }
@@ -82,41 +73,6 @@ public final class RocksTripleLoader implements AutoCloseable {
         }
       });
     }
-  }
-
-  private void computeClosure(long property, long targetProperty) {
-    //We copy everything into the closure
-    posIndex.longPrefixIterator(new long[]{property})
-            .forEachRemaining(entry -> addTriple(entry.getKey()[2],
-                    targetProperty,
-                    entry.getKey()[1],
-                    entry.getValue()));
-
-    //We compute the closure
-    posIndex.longPrefixIterator(new long[]{targetProperty}).forEachRemaining(targetEntry -> {
-      long[] targetTriple = targetEntry.getKey();
-      long[] targetRange = targetEntry.getValue();
-      posIndex.longPrefixIterator(new long[]{targetProperty, targetTriple[2]}).forEachRemaining(leftEntry -> {
-        long[] range = LongRangeUtils.intersection(targetRange, leftEntry.getValue());
-        if (range != null) {
-          addTriple(leftEntry.getKey()[2],
-                  targetProperty,
-                  targetTriple[1],
-                  range
-          );
-        }
-      });
-      spoIndex.longPrefixIterator(new long[]{targetTriple[1], targetProperty}).forEachRemaining(rightEntry -> {
-        long[] range = LongRangeUtils.intersection(targetRange, rightEntry.getValue());
-        if (range != null) {
-          addTriple(targetTriple[2],
-                  targetProperty,
-                  rightEntry.getKey()[2],
-                  range
-          );
-        }
-      });
-    });
   }
 
   private void addTriple(long subject, long predicate, long object, long[] range) {

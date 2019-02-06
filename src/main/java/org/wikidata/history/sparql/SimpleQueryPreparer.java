@@ -27,6 +27,7 @@ public final class SimpleQueryPreparer extends AbstractQueryPreparer {
           new IterativeEvaluationOptimizer(),
           new FilterOptimizer(),
           new OrderLimitOptimizer(),
+          new QueryJoinOptimizer(new HistoryEvaluationStatistics())
   };
 
   public SimpleQueryPreparer(TripleSource tripleSource) {

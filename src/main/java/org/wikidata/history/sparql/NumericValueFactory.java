@@ -222,7 +222,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     String iri = namespace + localName;
     OptionalLong encodedIri = stringStore.putString(iri);
     if (encodedIri.isPresent()) {
-      return new DictionaryIRI(encodedIri.getAsLong(), stringStore);
+      return new DictionaryIRI(encodedIri.getAsLong(), iri);
     } else {
       return super.createIRI(iri);
     }
@@ -261,7 +261,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
   public BNode createBNode(String nodeID) {
     OptionalLong encodedId = stringStore.putString(nodeID);
     if (encodedId.isPresent()) {
-      return new DictionaryBNode(encodedId.getAsLong(), stringStore);
+      return new DictionaryBNode(encodedId.getAsLong(), nodeID);
     } else {
       return super.createBNode(nodeID);
     }
@@ -290,7 +290,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     OptionalLong encodedLabel = stringStore.putString(label);
     Optional<Short> encodedLanguage = stringStore.putLanguage(language);
     if (encodedLabel.isPresent() && encodedLanguage.isPresent()) {
-      return new DictionaryLanguageTaggedString(encodedLabel.getAsLong(), encodedLanguage.get(), stringStore);
+      return new DictionaryLanguageTaggedString(encodedLabel.getAsLong(), encodedLanguage.get(), label);
     } else {
       return super.createLiteral(label, language);
     }
@@ -336,7 +336,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     if (encodedLabel.isPresent()) {
       Short datatypeId = DATATYPE_ENCODING.get(datatype.stringValue());
       if (datatypeId != null) {
-        return new DictionaryLiteral(encodedLabel.getAsLong(), datatypeId, stringStore);
+        return new DictionaryLiteral(encodedLabel.getAsLong(), datatypeId, label);
       }
     }
     return super.createLiteral(label, datatype);
@@ -674,6 +674,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
   private static final class DictionaryIRI implements IRI, NumericValue {
     private final long id;
     private final StringStore stringStore;
+    private String iri = null;
     private int localNameIdx = -1;
 
     private DictionaryIRI(long id, StringStore stringStore) {
@@ -681,12 +682,21 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
       this.stringStore = stringStore;
     }
 
+    private DictionaryIRI(long id, String iri) {
+      this.id = id;
+      this.stringStore = null;
+      this.iri = iri;
+    }
+
     @Override
     public String stringValue() {
-      return stringStore.getString(id).orElseGet(() -> {
-        LOGGER.warn("The id " + id + " is not in the string store");
-        return "UNKNOWN";
-      });
+      if (iri == null && stringStore != null) {
+        iri = stringStore.getString(id).orElseGet(() -> {
+          LOGGER.warn("The id " + id + " is not in the string store");
+          return "UNKNOWN";
+        });
+      }
+      return iri;
     }
 
     @Override
@@ -738,10 +748,17 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
   static final class DictionaryBNode implements BNode, NumericValue {
     private final long id;
     private final StringStore stringStore;
+    private String nodeID = null;
 
     private DictionaryBNode(long id, StringStore stringStore) {
       this.id = id;
       this.stringStore = stringStore;
+    }
+
+    private DictionaryBNode(long id, String bnodeId) {
+      this.id = id;
+      this.stringStore = null;
+      this.nodeID = bnodeId;
     }
 
     @Override
@@ -751,10 +768,13 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
     @Override
     public String getID() {
-      return stringStore.getString(id).orElseGet(() -> {
-        LOGGER.warn("The id " + id + " is not in the string store");
-        return "UNKNOWN";
-      });
+      if (nodeID == null && stringStore != null) {
+        nodeID = stringStore.getString(id).orElseGet(() -> {
+          LOGGER.warn("The id " + id + " is not in the string store");
+          return "UNKNOWN";
+        });
+      }
+      return nodeID;
     }
 
     @Override
@@ -991,11 +1011,19 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     private final long id;
     private final short datatypeId;
     private final StringStore stringStore;
+    private String label = null;
 
     private DictionaryLiteral(long id, short datatypeId, StringStore stringStore) {
       this.id = id;
       this.datatypeId = datatypeId;
       this.stringStore = stringStore;
+    }
+
+    private DictionaryLiteral(long id, short datatypeId, String label) {
+      this.id = id;
+      this.datatypeId = datatypeId;
+      this.stringStore = null;
+      this.label = label;
     }
 
     private DictionaryLiteral(long id, StringStore stringStore) {
@@ -1004,10 +1032,13 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
     @Override
     public String getLabel() {
-      return stringStore.getString(id).orElseGet(() -> {
-        LOGGER.warn("The id " + id + " is not in the string store");
-        return "UNKNOWN";
-      });
+      if (label == null && stringStore != null) {
+        label = stringStore.getString(id).orElseGet(() -> {
+          LOGGER.warn("The id " + id + " is not in the string store");
+          return "UNKNOWN";
+        });
+      }
+      return label;
     }
 
     @Override
@@ -1042,11 +1073,19 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     private final long labelId;
     private final short languageId;
     private final StringStore stringStore;
+    private String label = null;
 
     private DictionaryLanguageTaggedString(long labelId, short languageId, StringStore stringStore) {
       this.labelId = labelId;
       this.languageId = languageId;
       this.stringStore = stringStore;
+    }
+
+    private DictionaryLanguageTaggedString(long labelId, short languageId, String label) {
+      this.labelId = labelId;
+      this.languageId = languageId;
+      this.stringStore = null;
+      this.label = label;
     }
 
     private DictionaryLanguageTaggedString(long id, StringStore stringStore) {
@@ -1055,10 +1094,13 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
     @Override
     public String getLabel() {
-      return stringStore.getString(labelId).orElseGet(() -> {
-        LOGGER.warn("The id " + labelId + " is not in the string store");
-        return "UNKNOWN";
-      });
+      if (label == null && stringStore != null) {
+        label = stringStore.getString(labelId).orElseGet(() -> {
+          LOGGER.warn("The id " + labelId + " is not in the string store");
+          return "UNKNOWN";
+        });
+      }
+      return label;
     }
 
     @Override

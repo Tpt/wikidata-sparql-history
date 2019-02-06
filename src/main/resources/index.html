@@ -3,15 +3,32 @@
 <head>
     <meta charset="utf-8">
     <title>Wikidata History Query Service</title>
-    <link rel="stylesheet" type="text/css"
-          href="//tools-static.wmflabs.org/cdnjs/ajax/libs/yasqe/2.11.22/yasqe.min.css"/>
-    <link rel="stylesheet" type="text/css" href="//tools-static.wmflabs.org/cdnjs/ajax/libs/yasr/2.12.19/yasr.min.css"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet"
+          href="//tools-static.wmflabs.org/cdnjs/ajax/libs/twitter-bootstrap/4.2.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="//tools-static.wmflabs.org/cdnjs/ajax/libs/yasqe/2.11.22/yasqe.min.css"/>
+    <link rel="stylesheet" href="//tools-static.wmflabs.org/cdnjs/ajax/libs/yasr/2.12.19/yasr.min.css"/>
 </head>
 <body>
+<header>
+    <nav class="navbar navbar-expand navbar-light bg-light">
+        <span class="navbar-brand">Wikidata History Query Service</span>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="https://www.wikidata.org/wiki/Wikidata:History_Query_Service">Help</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="https://github.com/Tpt/wikidata-sparql-history">Source code</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+</header>
 <div id="yasqe"></div>
 <div id="yasr"></div>
-<script src='//tools-static.wmflabs.org/cdnjs/ajax/libs/yasr/2.12.19/yasr.bundled.min.js'></script>
-<script src='//tools-static.wmflabs.org/cdnjs/ajax/libs/yasqe/2.11.22/yasqe.bundled.min.js'></script>
+<script src="//tools-static.wmflabs.org/cdnjs/ajax/libs/yasr/2.12.19/yasr.bundled.min.js"></script>
+<script src="//tools-static.wmflabs.org/cdnjs/ajax/libs/yasqe/2.11.22/yasqe.bundled.min.js"></script>
 <script>
     YASQE.Autocompleters.prefixes.fetchFrom = '/prefixes';
     var yasqe = YASQE(document.getElementById("yasqe"), {

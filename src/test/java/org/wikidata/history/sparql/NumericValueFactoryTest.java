@@ -11,7 +11,6 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalLong;
 
 public class NumericValueFactoryTest {
 
@@ -147,23 +146,23 @@ public class NumericValueFactoryTest {
     }
 
     @Override
-    public Optional<String> getString(long id) {
-      return Optional.ofNullable(DECODING.get(id));
+    public String getString(long id) {
+      return DECODING.get(id);
     }
 
     @Override
-    public OptionalLong putString(String str) {
-      return ENCODING.containsKey(str) ? OptionalLong.of(ENCODING.get(str)) : OptionalLong.empty();
+    public Long putString(String str) {
+      return ENCODING.getOrDefault(str, null);
     }
 
     @Override
-    public Optional<String> getLanguage(short id) {
-      return Optional.ofNullable(DECODING.get((long) id));
+    public String getLanguage(short id) {
+      return DECODING.get((long) id);
     }
 
     @Override
-    public Optional<Short> putLanguage(String languageCode) {
-      return ENCODING.containsKey(languageCode) ? Optional.of(ENCODING.get(languageCode).shortValue()) : Optional.empty();
+    public Short putLanguage(String languageCode) {
+      return ENCODING.containsKey(languageCode) ? ENCODING.get(languageCode).shortValue() : null;
     }
 
     @Override

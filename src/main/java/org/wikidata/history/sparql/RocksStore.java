@@ -372,18 +372,20 @@ public class RocksStore implements AutoCloseable {
     }
 
     @Override
-    public Optional<String> getString(long id) {
+    public String getString(long id) {
       try {
-        return Optional.ofNullable(db.get(stringForIdColumnFamilyHandle, Longs.toByteArray(id))).map(String::new);
+        byte[] str = db.get(stringForIdColumnFamilyHandle, Longs.toByteArray(id));
+        return (str == null) ? null : new String(str);
       } catch (RocksDBException e) {
         throw new RuntimeException(e);
       }
     }
 
     @Override
-    public Optional<String> getLanguage(short id) {
+    public String getLanguage(short id) {
       try {
-        return Optional.ofNullable(db.get(languageForIdColumnFamilyHandle, Shorts.toByteArray(id))).map(String::new);
+        byte[] str = db.get(languageForIdColumnFamilyHandle, Shorts.toByteArray(id));
+        return (str == null) ? null : new String(str);
       } catch (RocksDBException e) {
         throw new RuntimeException(e);
       }
@@ -400,21 +402,22 @@ public class RocksStore implements AutoCloseable {
     }
 
     @Override
-    public OptionalLong putString(String str) {
+    public Long putString(String str) {
       byte[] strBytes = str.getBytes();
       try {
         byte[] key = db.get(idForStringColumnFamilyHandle, strBytes);
-        return key == null ? OptionalLong.empty() : OptionalLong.of(Longs.fromByteArray(key));
+        return key == null ? null : Longs.fromByteArray(key);
       } catch (RocksDBException e) {
         throw new RuntimeException(e);
       }
     }
 
     @Override
-    public Optional<Short> putLanguage(String languageCode) {
+    public Short putLanguage(String languageCode) {
       byte[] strBytes = languageCode.getBytes();
       try {
-        return Optional.ofNullable(db.get(idForLanguageColumnFamilyHandle, strBytes)).map(Shorts::fromByteArray);
+        byte[] key = db.get(idForLanguageColumnFamilyHandle, strBytes);
+        return key == null ? null : Shorts.fromByteArray(key);
       } catch (RocksDBException e) {
         throw new RuntimeException(e);
       }
@@ -427,7 +430,7 @@ public class RocksStore implements AutoCloseable {
     }
 
     @Override
-    public OptionalLong putString(String str) {
+    public Long putString(String str) {
       byte[] strBytes = str.getBytes();
       try {
         byte[] key = db.get(idForStringColumnFamilyHandle, strBytes);
@@ -436,7 +439,7 @@ public class RocksStore implements AutoCloseable {
           db.put(idForStringColumnFamilyHandle, strBytes, key);
           db.put(stringForIdColumnFamilyHandle, key, strBytes);
         }
-        return OptionalLong.of(Longs.fromByteArray(key));
+        return Longs.fromByteArray(key);
       } catch (RocksDBException e) {
         throw new RuntimeException(e);
       }
@@ -450,7 +453,7 @@ public class RocksStore implements AutoCloseable {
     }
 
     @Override
-    public Optional<Short> putLanguage(String str) {
+    public Short putLanguage(String str) {
       byte[] strBytes = str.getBytes();
       try {
         byte[] key = db.get(idForLanguageColumnFamilyHandle, strBytes);
@@ -459,7 +462,7 @@ public class RocksStore implements AutoCloseable {
           db.put(idForLanguageColumnFamilyHandle, strBytes, key);
           db.put(languageForIdColumnFamilyHandle, key, strBytes);
         }
-        return Optional.of(Shorts.fromByteArray(key));
+        return Shorts.fromByteArray(key);
       } catch (RocksDBException e) {
         throw new RuntimeException(e);
       }

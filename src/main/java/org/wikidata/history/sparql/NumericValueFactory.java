@@ -18,7 +18,6 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -220,9 +219,9 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     }
 
     String iri = namespace + localName;
-    OptionalLong encodedIri = stringStore.putString(iri);
-    if (encodedIri.isPresent()) {
-      return new DictionaryIRI(encodedIri.getAsLong(), iri);
+    Long encodedIri = stringStore.putString(iri);
+    if (encodedIri != null) {
+      return new DictionaryIRI(encodedIri, iri);
     } else {
       return super.createIRI(iri);
     }
@@ -259,9 +258,9 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
   @Override
   public BNode createBNode(String nodeID) {
-    OptionalLong encodedId = stringStore.putString(nodeID);
-    if (encodedId.isPresent()) {
-      return new DictionaryBNode(encodedId.getAsLong(), nodeID);
+    Long encodedId = stringStore.putString(nodeID);
+    if (encodedId != null) {
+      return new DictionaryBNode(encodedId, nodeID);
     } else {
       return super.createBNode(nodeID);
     }
@@ -287,10 +286,10 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
   @Override
   public Literal createLiteral(String label, String language) {
-    OptionalLong encodedLabel = stringStore.putString(label);
-    Optional<Short> encodedLanguage = stringStore.putLanguage(language);
-    if (encodedLabel.isPresent() && encodedLanguage.isPresent()) {
-      return new DictionaryLanguageTaggedString(encodedLabel.getAsLong(), encodedLanguage.get(), label);
+    Long encodedLabel = stringStore.putString(label);
+    Short encodedLanguage = stringStore.putLanguage(language);
+    if (encodedLabel != null && encodedLanguage != null) {
+      return new DictionaryLanguageTaggedString(encodedLabel, encodedLanguage, label);
     } else {
       return super.createLiteral(label, language);
     }
@@ -332,11 +331,11 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
   }
 
   private Literal createDictionaryLiteral(String label, IRI datatype) {
-    OptionalLong encodedLabel = stringStore.putString(label);
-    if (encodedLabel.isPresent()) {
+    Long encodedLabel = stringStore.putString(label);
+    if (encodedLabel != null) {
       Short datatypeId = DATATYPE_ENCODING.get(datatype.stringValue());
       if (datatypeId != null) {
-        return new DictionaryLiteral(encodedLabel.getAsLong(), datatypeId, label);
+        return new DictionaryLiteral(encodedLabel, datatypeId, label);
       }
     }
     return super.createLiteral(label, datatype);
@@ -691,10 +690,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     @Override
     public String stringValue() {
       if (iri == null && stringStore != null) {
-        iri = stringStore.getString(id).orElseGet(() -> {
-          LOGGER.warn("The id " + id + " is not in the string store");
-          return "UNKNOWN";
-        });
+        iri = stringStore.getString(id);
       }
       return iri;
     }
@@ -769,10 +765,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     @Override
     public String getID() {
       if (nodeID == null && stringStore != null) {
-        nodeID = stringStore.getString(id).orElseGet(() -> {
-          LOGGER.warn("The id " + id + " is not in the string store");
-          return "UNKNOWN";
-        });
+        nodeID = stringStore.getString(id);
       }
       return nodeID;
     }
@@ -1033,10 +1026,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     @Override
     public String getLabel() {
       if (label == null && stringStore != null) {
-        label = stringStore.getString(id).orElseGet(() -> {
-          LOGGER.warn("The id " + id + " is not in the string store");
-          return "UNKNOWN";
-        });
+        label = stringStore.getString(id);
       }
       return label;
     }
@@ -1095,17 +1085,14 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     @Override
     public String getLabel() {
       if (label == null && stringStore != null) {
-        label = stringStore.getString(labelId).orElseGet(() -> {
-          LOGGER.warn("The id " + labelId + " is not in the string store");
-          return "UNKNOWN";
-        });
+        label = stringStore.getString(labelId);
       }
       return label;
     }
 
     @Override
     public Optional<String> getLanguage() {
-      return stringStore.getLanguage(languageId);
+      return Optional.ofNullable(stringStore.getLanguage(languageId));
     }
 
     @Override
@@ -1257,13 +1244,13 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
   }
 
   interface StringStore extends AutoCloseable {
-    Optional<String> getString(long id);
+    String getString(long id);
 
-    OptionalLong putString(String str);
+    Long putString(String str);
 
-    Optional<String> getLanguage(short id);
+    String getLanguage(short id);
 
-    Optional<Short> putLanguage(String languageCode);
+    Short putLanguage(String languageCode);
 
     @Override
     void close();
@@ -1271,23 +1258,23 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
   static class EmptyStringStore implements StringStore {
     @Override
-    public Optional<String> getString(long id) {
-      return Optional.empty();
+    public String getString(long id) {
+      return null;
     }
 
     @Override
-    public OptionalLong putString(String str) {
-      return OptionalLong.empty();
+    public Long putString(String str) {
+      return null;
     }
 
     @Override
-    public Optional<String> getLanguage(short id) {
-      return Optional.empty();
+    public String getLanguage(short id) {
+      return null;
     }
 
     @Override
-    public Optional<Short> putLanguage(String languageCode) {
-      return Optional.empty();
+    public Short putLanguage(String languageCode) {
+      return null;
     }
 
     @Override

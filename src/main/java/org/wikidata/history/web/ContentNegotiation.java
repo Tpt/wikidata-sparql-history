@@ -65,13 +65,18 @@ class ContentNegotiation {
     }
 
     boolean match(String mime) {
-      String[] parts = mime.split(",", 1);
+      String[] parts = mime.split("/", 2);
       return type.equals("*") || (type.equals(parts[0])) && (subType.equals("*") || subType.equals(parts[1]));
     }
 
     @Override
     public int compareTo(MediaRange mediaRange) {
       return Float.compare(q, mediaRange.q);
+    }
+
+    @Override
+    public String toString() {
+      return type + '/' + subType + "; q=" + q;
     }
   }
 }

@@ -50,9 +50,11 @@ class SparqlEndpoint {
   private final QueryParser queryParser = new SPARQLParser();
   private final QueryPreparer queryPreparer;
   private final ExecutorService executorService = Executors.newCachedThreadPool();
+  private final QueryLogger queryLogger;
 
-  SparqlEndpoint(TripleSource tripleSource) {
+  SparqlEndpoint(TripleSource tripleSource, QueryLogger queryLogger) {
     queryPreparer = new SimpleQueryPreparer(tripleSource);
+    this.queryLogger = queryLogger;
   }
 
   void get(Context context) {
@@ -96,6 +98,7 @@ class SparqlEndpoint {
     } catch (MalformedQueryException e) {
       throw new BadRequestResponse(e.getMessage());
     }
+    queryLogger.logQuery(parsedQuery.getSourceString());
     if (parsedQuery instanceof ParsedBooleanQuery) {
       evaluateBooleanQuery((ParsedBooleanQuery) parsedQuery, context);
     } else if (parsedQuery instanceof ParsedGraphQuery) {

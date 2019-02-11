@@ -20,30 +20,41 @@ import io.javalin.Javalin;
 import org.apache.commons.cli.*;
 import org.wikidata.history.sparql.RocksTripleSource;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Main {
 
-  public static void main(String[] args) throws ParseException {
+  public static void main(String[] args) throws ParseException, IOException {
     Options options = new Options();
     options.addOption("i", "index", true, "Directory where the index data are.");
     options.addOption("h", "host", true, "Host name");
     options.addOption("p", "port", true, "Name of the port to listen from");
+    options.addOption("l", "logFile", true, "Name of the query log file. By default query-log.txt");
 
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
     Path indexPath = Paths.get(line.getOptionValue("index", "wd-history-index"));
+    Path queryLog = Paths.get(line.getOptionValue("logFile", "query-log.txt"));
 
     String portString = line.getOptionValue("port", System.getenv("PORT"));
     int port = (portString != null) ? Integer.valueOf(portString) : 7000;
 
-    SparqlEndpoint sparqlEndpoint = new SparqlEndpoint(new RocksTripleSource(indexPath));
-    Javalin.create()
+    RocksTripleSource tripleSource = new RocksTripleSource(indexPath);
+    QueryLogger queryLogger = new QueryLogger(queryLog);
+    SparqlEndpoint sparqlEndpoint = new SparqlEndpoint(tripleSource, queryLogger);
+    Javalin javalin = Javalin.create()
             .get("", ctx -> ctx.contentType("text/html").result(Main.class.getResourceAsStream("/index.html")))
             .get("/sparql", sparqlEndpoint::get)
             .post("/sparql", sparqlEndpoint::post)
             .get("/prefixes", ctx -> ctx.contentType("application/json").result(Main.class.getResourceAsStream("/prefixes.json")))
             .start(port);
+
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      javalin.stop();
+      queryLogger.close();
+      tripleSource.close();
+    }));
   }
 }

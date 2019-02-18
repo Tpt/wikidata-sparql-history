@@ -13,7 +13,7 @@ A [documentation page is available on Wikidata.org](https://www.wikidata.org/wik
 To setup a working endpoint do:
 
 * Compile the Java program `mvn package`
-* Download the Wikidata history dumps to a directory `mkdir dumps && cd dumps && bash ../download_wd_history.sh`. Warning: it requies around 600GB of disk.
+* Download the Wikidata history dumps to a directory `mkdir dumps && cd dumps && bash ../download_wd_history.sh`. Warning: it requires around 600GB of disk.
 * Preprocess the dump to get all revision metadata and triples annotated with their insertions and deletions (takes a few days and all your CPU cores): `java -server -jar target/sparql-endpoint-0.1-SNAPSHOT.jar -preprocess`
 * Build database indexes: `java -server -jar target/sparql-endpoint-0.1-SNAPSHOT.jar -load`.
 * Start the web server `java -server -classpath target/sparql-endpoint-0.1-SNAPSHOT.jar org.wikidata.history.web.Main`

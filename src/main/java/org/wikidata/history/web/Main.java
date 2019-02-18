@@ -36,7 +36,7 @@ public class Main {
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
     Path indexPath = Paths.get(line.getOptionValue("index", "wd-history-index"));
-    Path queryLog = Paths.get(line.getOptionValue("logFile", "query-log.txt"));
+    Path queryLog = Paths.get(line.getOptionValue("logFile", "query-log"));
 
     String portString = line.getOptionValue("port", System.getenv("PORT"));
     int port = (portString != null) ? Integer.valueOf(portString) : 7000;

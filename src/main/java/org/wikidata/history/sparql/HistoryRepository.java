@@ -34,7 +34,7 @@ public class HistoryRepository extends AbstractRepository implements AutoCloseab
 
   public HistoryRepository(Path indexPath) {
     this.indexPath = indexPath;
-    initialize();
+    init();
   }
 
   @Override

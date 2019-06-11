@@ -26,7 +26,7 @@ class WikidataPropertyInformation {
   WikidataPropertyInformation() {
     SPARQLRepository repository = new SPARQLRepository(WDQS_ENDPOINT);
     repository.setAdditionalHttpHeaders(Collections.singletonMap("User-Agent", USER_AGENT));
-    repository.initialize();
+    repository.init();
     try (RepositoryConnection connection = repository.getConnection()) {
       connection.prepareTupleQuery(QUERY).evaluate(new AbstractTupleQueryResultHandler() {
         @Override

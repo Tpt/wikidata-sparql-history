@@ -1,10 +1,10 @@
 package org.wikidata.history.web;
 
-import io.javalin.BadRequestResponse;
-import io.javalin.Context;
-import io.javalin.HttpResponseException;
-import io.javalin.InternalServerErrorResponse;
 import io.javalin.core.util.Header;
+import io.javalin.http.BadRequestResponse;
+import io.javalin.http.Context;
+import io.javalin.http.HttpResponseException;
+import io.javalin.http.InternalServerErrorResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.eclipse.rdf4j.common.lang.FileFormat;

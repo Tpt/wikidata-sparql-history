@@ -1,6 +1,6 @@
 package org.wikidata.history.web;
 
-import io.javalin.HttpResponseException;
+import io.javalin.http.HttpResponseException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;

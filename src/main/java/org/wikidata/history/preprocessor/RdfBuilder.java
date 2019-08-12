@@ -173,6 +173,7 @@ class RdfBuilder {
       case DatatypeIdValue.DT_GLOBE_COORDINATES:
       case DatatypeIdValue.DT_TIME:
       case DatatypeIdValue.DT_QUANTITY:
+      case DatatypeIdValue.DT_MONOLINGUAL_TEXT:
         return true;
       case DatatypeIdValue.DT_COMMONS_MEDIA:
       case DatatypeIdValue.DT_ITEM:
@@ -185,7 +186,8 @@ class RdfBuilder {
       case DatatypeIdValue.DT_TABULAR_DATA:
         return false;
       default:
-        throw new IllegalArgumentException("Not expected datatype: " + datatypeId);
+        LOGGER.warn("Not expected datatype: " + datatypeId);
+        return false;
     }
   }
 

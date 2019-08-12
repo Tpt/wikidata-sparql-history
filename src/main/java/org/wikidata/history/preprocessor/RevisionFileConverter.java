@@ -125,7 +125,8 @@ public class RevisionFileConverter {
     }
 
     private void processRevisions() {
-      long[] revisionIds = revisions.keySet().stream().mapToLong(a -> a).sorted().toArray();
+      long[] revisionIds = toSortedLongArrays(revisions.keySet());
+
       for (int i = 0; i < revisionIds.length; i++) {
         long revisionId = revisionIds[i];
         long nextRevisionId = (i + 1 == revisionIds.length) ? Long.MAX_VALUE : revisionIds[i + 1];
@@ -137,13 +138,12 @@ public class RevisionFileConverter {
           long[] statementRevisions = triplesHistory.getOrDefault(statement, EMPTY_LONG_ARRAY);
           if (statementRevisions.length > 0 && statementRevisions[statementRevisions.length - 1] == revisionId) {
             statementRevisions[statementRevisions.length - 1] = nextRevisionId;
-          } else if (statementRevisions.length == 0 || statementRevisions[statementRevisions.length - 1] != nextRevisionId) {
-            //We do not add anything if the end is already at nextRevisionId
+          } else {
             statementRevisions = Arrays.copyOf(statementRevisions, statementRevisions.length + 2);
             statementRevisions[statementRevisions.length - 2] = revisionId;
             statementRevisions[statementRevisions.length - 1] = nextRevisionId;
+            triplesHistory.put(statement, statementRevisions);
           }
-          triplesHistory.put(statement, statementRevisions);
         }
       }
 
@@ -157,6 +157,17 @@ public class RevisionFileConverter {
 
       triplesHistory.clear();
       revisions.clear();
+    }
+
+    private long[] toSortedLongArrays(Set<Long> s) {
+      long[] values = new long[s.size()];
+      int i = 0;
+      for (long v : s) {
+        values[i] = v;
+        i++;
+      }
+      Arrays.sort(values);
+      return values;
     }
 
     private String getEntityIdFromPageTitle(String title) {

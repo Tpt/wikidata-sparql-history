@@ -1,0 +1,48 @@
+<mediawiki>
+    <page>
+        <title>Q1</title>
+        <ns>0</ns>
+        <id>1</id>
+        <revision>
+            <id>2</id>
+            <timestamp>2004-03-22T10:24:41Z</timestamp>
+            <contributor>
+                <username>Foo</username>
+                <id>1</id>
+            </contributor>
+            <comment>root</comment>
+            <text>{"type": "item", "id": "Q1", "labels": {"fr": {"value": "foo", "language": "fr"}, "en": {"value":
+                "bar", "language": "en"}, "de": {"value": "bar", "language": "de"}}}
+            </text>
+        </revision>
+        <revision>
+            <id>9</id>
+            <parentid>2</parentid>
+            <timestamp>2004-03-22T10:56:13Z</timestamp>
+            <contributor>
+                <username>Bar</username>
+                <id>2</id>
+            </contributor>
+            <minor/>
+            <comment>intro</comment>
+            <text>{"type": "item", "id": "Q1", "labels": {"fr": {"value": "foo", "language": "fr"}, "en": {"value":
+                "foo", "language": "en"}, "es": {"value": "foo", "language": "es"}}}
+            </text>
+        </revision>
+        <revision>
+            <id>11</id>
+            <parentid>2</parentid>
+            <timestamp>2004-03-22T10:58:13Z</timestamp>
+            <contributor>
+                <username>Bar</username>
+                <id>2</id>
+            </contributor>
+            <minor/>
+            <comment>intro</comment>
+            <text>{"type": "item", "id": "Q1", "labels": {"fr": {"value": "foo", "language": "fr"}, "en": {"value":
+                "foo", "language": "en"}, "de": {"value": "bar", "language": "de"}, "es": {"value": "foo", "language":
+                "es"}}}
+            </text>
+        </revision>
+    </page>
+</mediawiki>

@@ -4,7 +4,7 @@ import org.apache.commons.cli.*;
 import org.eclipse.rdf4j.query.resultio.text.tsv.SPARQLResultsTSVWriterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.wikidata.history.preprocessor.HistoryOutput;
+import org.wikidata.history.preprocessor.FileHistoryOutput;
 import org.wikidata.history.preprocessor.RevisionFileConverter;
 import org.wikidata.history.sparql.HistoryRepository;
 import org.wikidata.history.sparql.RocksRevisionLoader;
@@ -52,7 +52,7 @@ public class Main {
               Runtime.getRuntime().availableProcessors()
       );
       try (
-              HistoryOutput historyOutput = new HistoryOutput(preprocessedDir);
+              FileHistoryOutput historyOutput = new FileHistoryOutput(preprocessedDir);
               BufferedWriter log = Files.newBufferedWriter(preprocessedDir.resolve("logs.txt"))
       ) {
         RevisionFileConverter revisionFileConverter = new RevisionFileConverter(historyOutput);

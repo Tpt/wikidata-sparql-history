@@ -22,6 +22,7 @@ public final class Vocabulary {
   public static final IRI SCHEMA_DATE_CREATED = VALUE_FACTORY.createIRI("http://schema.org/dateCreated");
   public static final IRI SCHEMA_IS_BASED_ON = VALUE_FACTORY.createIRI("http://schema.org/isBasedOn");
 
+  public static final String WB_NAMESPACE = "http://wikiba.se/ontology#";
   public static final String WBHISTORY_NAMESPACE = "http://wikiba.se/history/ontology#";
   public static final IRI HISTORY_ADDITION = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "addition");
   public static final IRI HISTORY_DELETION = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "deletion");

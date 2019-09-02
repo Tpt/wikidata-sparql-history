@@ -44,7 +44,7 @@ public class RevisionFileConverter {
     propertyInformation = new WikidataPropertyInformation();
   }
 
-  public void process(Path file) throws IOException {
+  public void process(Path file) throws IOException, InterruptedException {
     MwDumpFileProcessor processor = new MwRevisionDumpFileProcessor(new RevisionProcessor(historyOutput, sites, propertyInformation));
     MwLocalDumpFile dumpFile = new MwLocalDumpFile(file.toString(), DumpContentType.FULL, null, null);
     for (int i = 0; i < 10; i++) {
@@ -53,6 +53,7 @@ public class RevisionFileConverter {
         return;
       } catch (IOException e) {
         LOGGER.error(e.getMessage(), e);
+        Thread.sleep(30000);
         if (i == 9) {
           throw e;
         }

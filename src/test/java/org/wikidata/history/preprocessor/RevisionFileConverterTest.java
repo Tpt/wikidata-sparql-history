@@ -60,7 +60,7 @@ public class RevisionFileConverterTest {
   }
 
   @Test
-  public void test() throws IOException {
+  public void test() throws IOException, InterruptedException {
     ListHistoryOutput output = new ListHistoryOutput();
     RevisionFileConverter revisionFileConverter = new RevisionFileConverter(output);
     revisionFileConverter.process(makeDumpFile());

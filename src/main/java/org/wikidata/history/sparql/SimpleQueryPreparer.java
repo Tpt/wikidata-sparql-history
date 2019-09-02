@@ -16,6 +16,8 @@ import org.eclipse.rdf4j.query.algebra.evaluation.impl.*;
 import org.eclipse.rdf4j.repository.sparql.federation.SPARQLServiceResolver;
 
 public final class SimpleQueryPreparer extends AbstractQueryPreparer {
+  private static final SPARQLServiceResolver SPARQL_SERVICE_RESOLVER = new SPARQLServiceResolver();
+  private static final EvaluationStatistics EVALUATION_STATISTICS = new HistoryEvaluationStatistics();
   private static final QueryOptimizer[] SIMPLE_OPTIMIZERS = new QueryOptimizer[]{
           new PropertyPathOptimizer(),
           new BindingAssigner(),
@@ -27,7 +29,7 @@ public final class SimpleQueryPreparer extends AbstractQueryPreparer {
           new IterativeEvaluationOptimizer(),
           new FilterOptimizer(),
           new OrderLimitOptimizer(),
-          new QueryJoinOptimizer(new HistoryEvaluationStatistics())
+          new QueryJoinOptimizer(EVALUATION_STATISTICS)
   };
 
   public SimpleQueryPreparer(TripleSource tripleSource) {
@@ -43,9 +45,7 @@ public final class SimpleQueryPreparer extends AbstractQueryPreparer {
       tupleExpr = new QueryRoot(tupleExpr);
     }
 
-    EvaluationStrategy strategy = new ExtendedEvaluationStrategy(
-            getTripleSource(), dataset, new SPARQLServiceResolver(), 0L
-    );
+    EvaluationStrategy strategy = new ExtendedEvaluationStrategy(getTripleSource(), dataset, SPARQL_SERVICE_RESOLVER, 0L, EVALUATION_STATISTICS);
 
     for (QueryOptimizer optimizer : SIMPLE_OPTIMIZERS) {
       optimizer.optimize(tupleExpr, dataset, bindings);

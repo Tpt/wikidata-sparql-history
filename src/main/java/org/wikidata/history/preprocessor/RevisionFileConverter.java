@@ -67,7 +67,7 @@ public class RevisionFileConverter {
     private final Sites sites;
     private final WikidataPropertyInformation propertyInformation;
     private int currentPageId = -1;
-    private final Map<Long, List<Statement>> revisions = new TreeMap<>();
+    private final Map<Long, Set<Statement>> revisions = new TreeMap<>();
     private final Map<Statement, long[]> triplesHistory = new HashMap<>();
     private final ObjectReader entityReader = new DatamodelMapper(Datamodel.SITE_WIKIDATA)
             .enable(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT)
@@ -109,13 +109,13 @@ public class RevisionFileConverter {
         //Redirection
         Matcher redirectionMatcher = REDIRECTION_PATTERN.matcher(text);
         if (redirectionMatcher.matches()) {
-          revisions.put(revisionId, Collections.singletonList(VALUE_FACTORY.createStatement(
+          revisions.put(revisionId, Collections.singleton(VALUE_FACTORY.createStatement(
                   VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, redirectionMatcher.group(1)),
                   OWL.SAMEAS,
                   VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, redirectionMatcher.group(2))
           )));
         } else {
-          ListRdfOutput output = new ListRdfOutput();
+          SetRdfOutput output = new SetRdfOutput();
           RdfBuilder converter = new RdfBuilder(output, sites, propertyInformation);
           converter.addEntityDocument(entityReader.readValue(text));
           revisions.put(revisionId, output.getStatements());
@@ -150,6 +150,9 @@ public class RevisionFileConverter {
 
       for (Map.Entry<Statement, long[]> entry : triplesHistory.entrySet()) {
         try {
+          if (!isSorted(entry.getValue())) {
+            LOGGER.error("the revision ranges are not sorted: " + Arrays.toString(revisionIds));
+          }
           historyOutput.addTriple(entry.getKey().getSubject(), entry.getKey().getPredicate(), entry.getKey().getObject(), entry.getValue());
         } catch (IOException e) {
           LOGGER.error(e.getMessage(), e);
@@ -182,17 +185,26 @@ public class RevisionFileConverter {
         processRevisions();
       }
     }
+
+    private static boolean isSorted(long[] array) {
+      for (int i = 1; i < array.length; i++) {
+        if (array[i] <= array[i - 1]) {
+          return false;
+        }
+      }
+      return true;
+    }
   }
 
-  private static class ListRdfOutput implements RdfBuilder.RdfOutput {
-    private final List<Statement> statements = new ArrayList<>();
+  private static class SetRdfOutput implements RdfBuilder.RdfOutput {
+    private final Set<Statement> statements = new HashSet<>();
 
     @Override
     public void outputStatement(Statement statement) {
       statements.add(statement);
     }
 
-    List<Statement> getStatements() {
+    Set<Statement> getStatements() {
       return statements;
     }
   }

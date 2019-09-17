@@ -466,7 +466,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
       } else if (o instanceof ItemIRI) {
         return ((ItemIRI) o).numericId == numericId;
       } else {
-        return o instanceof IRI && o.toString().equals(toString());
+        return o instanceof IRI && ((IRI) o).stringValue().equals(stringValue());
       }
     }
 
@@ -544,7 +544,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
       } else if (o instanceof PropertyIRI) {
         return ((PropertyIRI) o).numericId == numericId && ((PropertyIRI) o).propertyType == propertyType;
       } else {
-        return o instanceof IRI && o.toString().equals(toString());
+        return o instanceof IRI && ((IRI) o).stringValue().equals(stringValue());
       }
     }
 
@@ -653,7 +653,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
       } else if (o instanceof RevisionIRI) {
         return ((RevisionIRI) o).revisionId == revisionId && ((RevisionIRI) o).snapshotType == snapshotType;
       } else {
-        return o instanceof IRI && o.toString().equals(toString());
+        return o instanceof IRI && ((IRI) o).stringValue().equals(stringValue());
       }
     }
 

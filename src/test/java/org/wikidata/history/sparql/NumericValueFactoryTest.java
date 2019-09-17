@@ -5,17 +5,17 @@ import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.vocabulary.GEO;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class NumericValueFactoryTest {
+class NumericValueFactoryTest {
 
   @Test
-  public void testIRIEncoding() throws NotSupportedValueException {
+  void testIRIEncoding() throws NotSupportedValueException {
     NumericValueFactory valueFactory = new NumericValueFactory(new TestStringStore());
     testIRIConversion(Vocabulary.WD_NAMESPACE + "Q42", valueFactory);
     testIRIConversion(Vocabulary.WDT_NAMESPACE + "P42", valueFactory);
@@ -31,7 +31,7 @@ public class NumericValueFactoryTest {
   }
 
   @Test
-  public void testStringEncoding() throws NotSupportedValueException {
+  void testStringEncoding() throws NotSupportedValueException {
     NumericValueFactory valueFactory = new NumericValueFactory(new TestStringStore());
     testStringConversion("foofoofoofoo", valueFactory);
     testStringConversion("bar", valueFactory);
@@ -42,7 +42,7 @@ public class NumericValueFactoryTest {
   }
 
   @Test
-  public void testNumberEncoding() throws NotSupportedValueException {
+  void testNumberEncoding() throws NotSupportedValueException {
     NumericValueFactory valueFactory = new NumericValueFactory(new TestStringStore());
     testIntegerConversion(0, valueFactory);
     testIntegerConversion(1, valueFactory);
@@ -54,7 +54,7 @@ public class NumericValueFactoryTest {
   }
 
   @Test
-  public void testDateTimeEncoding() throws NotSupportedValueException {
+  void testDateTimeEncoding() throws NotSupportedValueException {
     NumericValueFactory valueFactory = new NumericValueFactory(new TestStringStore());
     testDateTimeConversion("2020-01-01T00:00:00Z", valueFactory);
     testDateTimeConversion("2020-12-31T23:59:60Z", valueFactory);
@@ -63,7 +63,7 @@ public class NumericValueFactoryTest {
   }
 
   @Test
-  public void testTypedLiteralEncoding() throws NotSupportedValueException {
+  void testTypedLiteralEncoding() throws NotSupportedValueException {
     NumericValueFactory valueFactory = new NumericValueFactory(new TestStringStore());
     testTypedLiteralConversion("foofoofoofoo", GEO.WKT_LITERAL, valueFactory);
     testTypedLiteralConversion("foofoofoofoo", XMLSchema.DURATION, valueFactory);
@@ -71,7 +71,7 @@ public class NumericValueFactoryTest {
   }
 
   private void testIRIConversion(String iri, NumericValueFactory valueFactory) throws NotSupportedValueException {
-    Assert.assertEquals(iri,
+    Assertions.assertEquals(iri,
             valueFactory.createValue(
                     ((NumericValueFactory.NumericValue) valueFactory.createIRI(iri)).encode()
             ).stringValue()
@@ -82,47 +82,47 @@ public class NumericValueFactoryTest {
     Literal value = (Literal) valueFactory.createValue(
             ((NumericValueFactory.NumericValue) valueFactory.createLiteral(str)).encode()
     );
-    Assert.assertEquals(XMLSchema.STRING, value.getDatatype());
-    Assert.assertEquals(str, value.stringValue());
+    Assertions.assertEquals(XMLSchema.STRING, value.getDatatype());
+    Assertions.assertEquals(str, value.stringValue());
   }
 
   private void testLanguageStringConversion(String str, String languageCode, NumericValueFactory valueFactory) throws NotSupportedValueException {
     Literal value = (Literal) valueFactory.createValue(
             ((NumericValueFactory.NumericValue) valueFactory.createLiteral(str, languageCode)).encode()
     );
-    Assert.assertEquals(RDF.LANGSTRING, value.getDatatype());
-    Assert.assertEquals(str, value.stringValue());
-    Assert.assertEquals(Optional.of(languageCode), value.getLanguage());
+    Assertions.assertEquals(RDF.LANGSTRING, value.getDatatype());
+    Assertions.assertEquals(str, value.stringValue());
+    Assertions.assertEquals(Optional.of(languageCode), value.getLanguage());
   }
 
   private void testIntegerConversion(long number, NumericValueFactory valueFactory) throws NotSupportedValueException {
     Literal valueInteger = (Literal) valueFactory.createValue(
             ((NumericValueFactory.NumericValue) valueFactory.createLiteral(number)).encode()
     );
-    Assert.assertEquals(XMLSchema.INTEGER, valueInteger.getDatatype());
-    Assert.assertEquals(number, valueInteger.longValue());
+    Assertions.assertEquals(XMLSchema.INTEGER, valueInteger.getDatatype());
+    Assertions.assertEquals(number, valueInteger.longValue());
 
     Literal valueDecimal = (Literal) valueFactory.createValue(
             ((NumericValueFactory.NumericValue) valueFactory.createLiteral(Long.toString(number), XMLSchema.DECIMAL)).encode()
     );
-    Assert.assertEquals(XMLSchema.DECIMAL, valueDecimal.getDatatype());
-    Assert.assertEquals(number, valueDecimal.longValue());
+    Assertions.assertEquals(XMLSchema.DECIMAL, valueDecimal.getDatatype());
+    Assertions.assertEquals(number, valueDecimal.longValue());
   }
 
   private void testDateTimeConversion(String time, NumericValueFactory valueFactory) throws NotSupportedValueException {
     Literal value = (Literal) valueFactory.createValue(
             ((NumericValueFactory.NumericValue) valueFactory.createLiteral(time, XMLSchema.DATETIME)).encode()
     );
-    Assert.assertEquals(XMLSchema.DATETIME, value.getDatatype());
-    Assert.assertEquals(time, value.stringValue());
+    Assertions.assertEquals(XMLSchema.DATETIME, value.getDatatype());
+    Assertions.assertEquals(time, value.stringValue());
   }
 
   private void testTypedLiteralConversion(String str, IRI datatype, NumericValueFactory valueFactory) throws NotSupportedValueException {
     Literal value = (Literal) valueFactory.createValue(
             ((NumericValueFactory.NumericValue) valueFactory.createLiteral(str, datatype)).encode()
     );
-    Assert.assertEquals(datatype, value.getDatatype());
-    Assert.assertEquals(str, value.stringValue());
+    Assertions.assertEquals(datatype, value.getDatatype());
+    Assertions.assertEquals(str, value.stringValue());
   }
 
   static class TestStringStore implements NumericValueFactory.StringStore {

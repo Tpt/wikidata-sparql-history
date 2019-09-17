@@ -6,9 +6,9 @@ import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.ValueFactory;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -16,7 +16,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
-public class RocksTripleSourceTest {
+class RocksTripleSourceTest {
 
   private static final ValueFactory VALUE_FACTORY = SimpleValueFactory.getInstance();
   private static final List<Statement> STATEMENTS = Arrays.asList(
@@ -48,20 +48,20 @@ public class RocksTripleSourceTest {
 
   private final Path tempDir;
 
-  public RocksTripleSourceTest() throws IOException {
+  RocksTripleSourceTest() throws IOException {
     tempDir = Files.createTempDirectory(null);
     Files.deleteIfExists(tempDir);
   }
 
-  @Before
-  public void setUpBeforeClass() throws NotSupportedValueException {
+  @BeforeEach
+  void setUpBeforeClass() throws NotSupportedValueException {
     try (RocksStore store = new RocksStore(tempDir, false)) {
       NumericValueFactory factory = new NumericValueFactory(store.getReadWriteStringStore());
       for (Statement statement : STATEMENTS) {
         long s = factory.encodeValue(statement.getSubject());
         long p = factory.encodeValue(statement.getPredicate());
         long o = factory.encodeValue(statement.getObject());
-        long revision = Long.valueOf(((IRI) statement.getContext()).getLocalName());
+        long revision = Long.parseLong(((IRI) statement.getContext()).getLocalName());
         long[] value = new long[]{revision, revision + 1};
         store.spoStatementIndex().put(new long[]{s, p, o}, value);
         store.posStatementIndex().put(new long[]{p, o, s}, value);
@@ -81,7 +81,7 @@ public class RocksTripleSourceTest {
   }
 
   @Test
-  public void testTriplePattern() {
+  void testTriplePattern() {
     try (RocksTripleSource tripleSource = new RocksTripleSource(tempDir)) {
       assertLength(tripleSource.getStatements(null, null, null), 8);
       assertLength(tripleSource.getStatements(VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q42"), null, null), 8);
@@ -142,7 +142,7 @@ public class RocksTripleSourceTest {
         count++;
         iter.next();
       }
-      Assert.assertEquals(length, count);
+      Assertions.assertEquals(length, count);
     }
   }
 }

@@ -6,7 +6,8 @@ import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.wikidata.history.sparql.Vocabulary;
 
 import java.io.IOException;
@@ -18,10 +19,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-
-public class RevisionFileConverterTest {
+class RevisionFileConverterTest {
 
   private static final Map<Statement, long[]> EXPECTED_TRIPLES = new HashMap<>();
 
@@ -60,7 +58,7 @@ public class RevisionFileConverterTest {
   }
 
   @Test
-  public void test() throws IOException, InterruptedException {
+  void test() throws IOException, InterruptedException {
     ListHistoryOutput output = new ListHistoryOutput();
     RevisionFileConverter revisionFileConverter = new RevisionFileConverter(output);
     revisionFileConverter.process(makeDumpFile());
@@ -99,12 +97,12 @@ public class RevisionFileConverterTest {
   }
 
   private static <K, V> void assertMapEquals(Map<K, V> expected, Map<K, V> actual) {
-    assertEquals(expected.size(), actual.size());
+    Assertions.assertEquals(expected.size(), actual.size());
     for (Map.Entry<K, V> e : expected.entrySet()) {
       if (e.getValue() instanceof long[]) {
-        assertArrayEquals((long[]) e.getValue(), (long[]) actual.get(e.getKey()));
+        Assertions.assertArrayEquals((long[]) e.getValue(), (long[]) actual.get(e.getKey()));
       } else {
-        assertEquals(e.getValue(), actual.get(e.getKey()));
+        Assertions.assertEquals(e.getValue(), actual.get(e.getKey()));
       }
     }
   }

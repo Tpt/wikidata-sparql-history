@@ -1,16 +1,17 @@
 package org.wikidata.history.web;
 
-import org.junit.Assert;
-import org.junit.Test;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-public class ContentNegotiationTest {
+class ContentNegotiationTest {
 
   @Test
-  public void testNegotiateAccept() {
+  void testNegotiateAccept() {
     testAcceptNegotiation(null, Optional.of("application/ld+json"));
     testAcceptNegotiation("application/ld+json", Optional.of("application/ld+json"));
     testAcceptNegotiation("application/*", Optional.of("application/ld+json"));
@@ -26,7 +27,7 @@ public class ContentNegotiationTest {
 
   private void testAcceptNegotiation(String header, Optional<String> expected) {
     List<String> possibles = Arrays.asList("application/ld+json", "application/json");
-    Assert.assertEquals(expected, ContentNegotiation.negotiateAccept(header, possibles));
+    Assertions.assertEquals(expected, ContentNegotiation.negotiateAccept(header, possibles));
   }
 }
 

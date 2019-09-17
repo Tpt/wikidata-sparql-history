@@ -8,8 +8,8 @@ import org.eclipse.rdf4j.model.util.Models;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.ntriples.NTriplesUtil;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.wikidata.wdtk.datamodel.helpers.Datamodel;
 import org.wikidata.wdtk.datamodel.helpers.DatamodelMapper;
 import org.wikidata.wdtk.datamodel.implementation.EntityDocumentImpl;
@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class RdfBuilderTest {
+class RdfBuilderTest {
 
   private static final ObjectMapper OBJECT_MAPPER = new DatamodelMapper(Datamodel.SITE_WIKIDATA);
   private static final List<String> HASHED_NAMESPACES = Arrays.asList(
@@ -33,13 +33,13 @@ public class RdfBuilderTest {
   private final Sites sites;
   private final WikidataPropertyInformation PROPERTY_INFORMATION;
 
-  public RdfBuilderTest() throws IOException {
+  RdfBuilderTest() throws IOException {
     sites = (new DumpProcessingController("wikidatawiki")).getSitesInformation();
     PROPERTY_INFORMATION = new WikidataPropertyInformation();
   }
 
   @Test
-  public void testItemConversion() throws IOException {
+  void testItemConversion() throws IOException {
     testEntityConversion("Q3");
     testEntityConversion("Q4");
     testEntityConversion("Q6");
@@ -48,7 +48,7 @@ public class RdfBuilderTest {
   }
 
   @Test
-  public void testPropertyConversion() throws IOException {
+  void testPropertyConversion() throws IOException {
     testEntityConversion("P2");
     testEntityConversion("P3");
   }
@@ -61,7 +61,7 @@ public class RdfBuilderTest {
     rdfBuilder.addEntityDocument(entity);
     Model actual = makeHashedBlankNodes(output.getModel());
     if (!Models.isomorphic(expected, actual)) {
-      Assert.fail("Mapping failed." + diff(expected, actual));
+      Assertions.fail("Mapping failed." + diff(expected, actual));
     }
   }
 

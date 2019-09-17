@@ -1,5 +1,9 @@
 package org.wikidata.history.sparql;
 
+import org.eclipse.rdf4j.model.IRI;
+import org.eclipse.rdf4j.model.Resource;
+import org.eclipse.rdf4j.model.Value;
+import org.eclipse.rdf4j.model.vocabulary.OWL;
 import org.eclipse.rdf4j.rio.ntriples.NTriplesUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +21,7 @@ public final class RocksTripleLoader implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(RocksTripleLoader.class);
 
   private final RocksStore store;
+  private final boolean wdtOnly;
   private final NumericValueFactory valueFactory;
   private final RocksStore.Index<long[], long[]> spoIndex;
   private final RocksStore.Index<long[], long[]> posIndex;
@@ -24,7 +29,7 @@ public final class RocksTripleLoader implements AutoCloseable {
   private final RocksStore.Index<Long, long[]> insertedStatement;
   private final RocksStore.Index<Long, long[]> deletedStatement;
 
-  public RocksTripleLoader(Path path) {
+  public RocksTripleLoader(Path path, boolean wdtOnly) {
     store = new RocksStore(path, false);
     valueFactory = new NumericValueFactory(store.getReadWriteStringStore());
     spoIndex = store.spoStatementIndex();
@@ -32,6 +37,7 @@ public final class RocksTripleLoader implements AutoCloseable {
     ospIndex = store.ospStatementIndex();
     insertedStatement = store.insertedStatementIndex();
     deletedStatement = store.deletedStatementIndex();
+    this.wdtOnly = wdtOnly;
   }
 
   public void load(Path file) throws IOException {
@@ -61,9 +67,16 @@ public final class RocksTripleLoader implements AutoCloseable {
           if (!LongRangeUtils.isSorted(revisionIds)) {
             LOGGER.error("the revision ranges are not sorted: " + Arrays.toString(revisionIds));
           }
-          addTriple(valueFactory.encodeValue(NTriplesUtil.parseResource(parts[0], valueFactory)),
-                  valueFactory.encodeValue(NTriplesUtil.parseURI(parts[1], valueFactory)),
-                  valueFactory.encodeValue(NTriplesUtil.parseValue(parts[2], valueFactory)),
+          Resource subject = NTriplesUtil.parseResource(parts[0], valueFactory);
+          IRI predicate = NTriplesUtil.parseURI(parts[1], valueFactory);
+          Value object = NTriplesUtil.parseValue(parts[2], valueFactory);
+          if (wdtOnly && !(OWL.SAMEAS.equals(predicate) || Vocabulary.WDT_NAMESPACE.equals(predicate.getNamespace()))) {
+            return;
+          }
+          addTriple(
+                  valueFactory.encodeValue(subject),
+                  valueFactory.encodeValue(predicate),
+                  valueFactory.encodeValue(object),
                   revisionIds
           );
         } catch (NotSupportedValueException e) {

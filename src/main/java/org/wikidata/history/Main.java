@@ -33,6 +33,7 @@ public class Main {
     options.addOption("pd", "preprocessed-dir", true, "Directory where preprocessed data are.");
     options.addOption("id", "index-dir", true, "Directory where index data are.");
     options.addOption("t", "triples-only", false, "Load only triples");
+    options.addOption("wdt", "wdt-only", false, "Load only wdt: and owl:sameAs relations");
 
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
@@ -94,7 +95,7 @@ public class Main {
 
       Path triplesFile = preprocessedDir.resolve("triples.tsv.gz");
       if (Files.exists(triplesFile)) {
-        try (RocksTripleLoader loader = new RocksTripleLoader(indexDir)) {
+        try (RocksTripleLoader loader = new RocksTripleLoader(indexDir, options.hasOption("wdt-only"))) {
           loader.load(triplesFile);
         }
       } else {

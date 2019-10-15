@@ -7,7 +7,6 @@ A [documentation page is available on Wikidata.org](https://www.wikidata.org/wik
 
 [![Build Status](https://travis-ci.org/Tpt/wikidata-sparql-history.svg?branch=master)](https://travis-ci.org/Tpt/wikidata-sparql-history)
 
-
 ## Developer documentation
 
 To setup a working endpoint do:
@@ -25,3 +24,23 @@ Copyright (C) 2019 Thomas Pellissier Tanon.
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+## Citation
+
+If you want to cite this software in an academic publication, please use:
+
+Pellissier Tanon T., Suchanek F. (2019) Querying the Edit History of Wikidata. In: Hitzler P. et al. (eds) The Semantic Web: ESWC 2019 Satellite Events. ESWC 2019. Lecture Notes in Computer Science, vol 11762. Springer, Cham
+
+In BibTex:
+```bibtex
+@inproceedings{wikdiataHistoryQueryService,
+  author    = {Thomas Pellissier Tanon and Fabian M. Suchanek},
+  title     = {Querying the Edit History of Wikidata},
+  booktitle = {The Semantic Web: {ESWC} 2019 Satellite Events - {ESWC} 2019 Satellite
+               Events, Portoro{\v{z}}, Slovenia, June 2-6, 2019, Revised Selected
+               Papers},
+  pages     = {161--166},
+  year      = {2019},
+  doi       = {10.1007/978-3-030-32327-1\_32}
+}
+```

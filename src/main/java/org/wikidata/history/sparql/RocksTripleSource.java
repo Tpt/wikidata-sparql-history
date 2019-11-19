@@ -79,7 +79,8 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
             new RevisionTopicMagicPredicate(),
             new RevisionDateMagicPredicate(),
             new ParentRevisionMagicPredicate(),
-            new RevisionAuthorMagicPredicate()
+            new RevisionAuthorMagicPredicate(),
+            new RevisionGlobalStateAtMagicPredicate()
     };
     for (MagicPredicate predicate : predicates) {
       magicPredicates.put(predicate.getPredicate(), predicate);
@@ -729,6 +730,37 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
                   ? toIteration(subj, getPredicate(), obj)
                   : EMPTY_ITERATION;
         }
+      }
+    }
+  }
+
+  private final class RevisionGlobalStateAtMagicPredicate extends RevisionsSubjectMagicPredicate {
+
+    RevisionGlobalStateAtMagicPredicate() {
+      super(Vocabulary.HISTORY_GLOBAL_STATE_AT);
+    }
+
+    @Override
+    CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subjRevision, Value obj) {
+      if (!(obj instanceof Literal && ((Literal) obj).getDatatype().equals(XMLSchema.DATETIME))) {
+        return EMPTY_ITERATION;
+      }
+
+      try {
+        long date = Instant.parse(obj.stringValue()).getEpochSecond();
+        CloseableIteration<long[], QueryEvaluationException> iter = dateRevisionsIndex.longPrefixIteration(date, (d, rev) -> rev);
+        if (!iter.hasNext()) {
+          return EMPTY_ITERATION;
+        }
+        long[] revisions = iter.next();
+        Arrays.sort(revisions);
+        NumericValueFactory.RevisionIRI revision = valueFactory.createRevisionIRI(revisions[0], Vocabulary.SnapshotType.GLOBAL_STATE);
+
+        return (subjRevision == null || subjRevision.equals(revision))
+                ? toIteration(revision, getPredicate(), obj)
+                : EMPTY_ITERATION;
+      } catch (DateTimeParseException e) {
+        throw new QueryEvaluationException(obj + " is an invalid revision timestamp");
       }
     }
   }

@@ -74,6 +74,13 @@ public class HistoryEvaluationStatistics extends EvaluationStatistics {
             return Integer.MAX_VALUE;
           }
         }
+        if (predicate.equals(Vocabulary.HISTORY_GLOBAL_STATE_AT)) {
+          if (object != null) {
+            return 1;
+          } else {
+            return Integer.MAX_VALUE;
+          }
+        }
       }
 
       //We are querying revision data without predicate

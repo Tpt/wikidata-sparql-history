@@ -221,6 +221,10 @@ public class RocksStore implements AutoCloseable {
       }
     }
 
+    <E, X extends Exception> CloseableIteration<E, X> longPrefixIteration(long prefix, FailingKVMappingFunction<K, V, E, X> mappingFunction) {
+      return prefixIteration(LONG_SERIALIZER.serialize(prefix), mappingFunction);
+    }
+
     <E, X extends Exception> CloseableIteration<E, X> longPrefixIteration(long[] prefix, FailingKVMappingFunction<K, V, E, X> mappingFunction) {
       return prefixIteration(LONG_ARRAY_SERIALIZER.serialize(prefix), mappingFunction);
     }

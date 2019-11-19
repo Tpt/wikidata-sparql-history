@@ -32,6 +32,7 @@ public final class Vocabulary {
   public static final IRI HISTORY_NEXT_REVISION = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "nextRevision");
   public static final IRI HISTORY_GLOBAL_STATE = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "globalState");
   public static final IRI HISTORY_REVISION_ID = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "revisionId");
+  public static final IRI HISTORY_GLOBAL_STATE_AT = VALUE_FACTORY.createIRI(WBHISTORY_NAMESPACE, "globalStateAt");
 
   public static final String WD_NAMESPACE = "http://www.wikidata.org/entity/";
   public static final String WDS_NAMESPACE = "http://www.wikidata.org/entity/statement/";

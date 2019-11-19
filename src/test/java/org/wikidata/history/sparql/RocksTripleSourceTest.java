@@ -131,7 +131,6 @@ class RocksTripleSourceTest {
       assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), null, deletionRevision), 2);
       assertLength(tripleSource.getStatements(null, VALUE_FACTORY.createIRI(Vocabulary.WDT_NAMESPACE, "P735"), VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), deletionRevision), 1);
       assertLength(tripleSource.getStatements(null, null, VALUE_FACTORY.createIRI(Vocabulary.WD_NAMESPACE, "Q463035"), deletionRevision), 1);
-
     }
   }
 

@@ -29,9 +29,6 @@ public class HistoryRepository extends AbstractRepository implements AutoCloseab
   private QueryParser queryParser;
   private QueryPreparer queryPreparer;
 
-  public HistoryRepository() {
-  }
-
   public HistoryRepository(Path indexPath) {
     this.indexPath = indexPath;
     init();
@@ -81,7 +78,7 @@ public class HistoryRepository extends AbstractRepository implements AutoCloseab
 
   private static final class HistoryConnection extends AbstractRepositoryConnection {
 
-    private HistoryRepository repository;
+    private final HistoryRepository repository;
 
     private HistoryConnection(HistoryRepository repository) {
       super(repository);

@@ -26,7 +26,7 @@ public class HistoryEvaluationStatistics extends EvaluationStatistics {
     return new HistoryCardinalityCalculator();
   }
 
-  protected class HistoryCardinalityCalculator extends CardinalityCalculator {
+  protected static class HistoryCardinalityCalculator extends CardinalityCalculator {
 
     @Override
     public double getCardinality(StatementPattern sp) {

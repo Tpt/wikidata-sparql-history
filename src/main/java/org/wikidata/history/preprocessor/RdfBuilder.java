@@ -377,7 +377,7 @@ class RdfBuilder {
     IRI node = VALUE_FACTORY.createIRI(WDV_PREFIX, valueHasher.hash(value));
     output.outputStatement(node, RDF.TYPE, WIKIBASE_TIME_VALUE_CLASS);
     output.outputStatement(node, WIKIBASE_TIME_VALUE, convertDateTime(value));
-    output.outputStatement(node, WIKIBASE_TIME_PRECISION, convert((int) value.getPrecision()));
+    output.outputStatement(node, WIKIBASE_TIME_PRECISION, convert(value.getPrecision()));
     output.outputStatement(node, WIKIBASE_TIME_TIMEZONE, convert(value.getTimezoneOffset()));
     output.outputStatement(node, WIKIBASE_TIME_CALENDAR_MODEL, convertIRI(value.getPreferredCalendarModel()));
     return node;

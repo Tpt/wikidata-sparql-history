@@ -375,7 +375,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
   }
 
   private abstract class MagicPredicate {
-    private IRI predicate;
+    private final IRI predicate;
 
     MagicPredicate(IRI predicate) {
       this.predicate = valueFactory.createIRI(predicate);

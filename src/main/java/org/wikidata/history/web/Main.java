@@ -39,7 +39,7 @@ public class Main {
     Path queryLog = Paths.get(line.getOptionValue("logFile", "query-log"));
 
     String portString = line.getOptionValue("port", System.getenv("PORT"));
-    int port = (portString != null) ? Integer.valueOf(portString) : 7000;
+    int port = (portString != null) ? Integer.parseInt(portString) : 7000;
 
     RocksTripleSource tripleSource = new RocksTripleSource(indexPath);
     QueryLogger queryLogger = new QueryLogger(queryLog);

@@ -199,14 +199,6 @@ public class RocksStore implements AutoCloseable {
       this.valueSerializer = valueSerializer;
     }
 
-    public boolean containsKey(K k) {
-      try {
-        return db.get(columnFamilyHandle, keySerializer.serialize(k)) != null;
-      } catch (RocksDBException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
     public V get(K k) {
       try {
         byte[] rawValue = db.get(columnFamilyHandle, keySerializer.serialize(k));
@@ -229,14 +221,6 @@ public class RocksStore implements AutoCloseable {
       }
     }
 
-    public void remove(K k) {
-      try {
-        db.delete(columnFamilyHandle, keySerializer.serialize(k));
-      } catch (RocksDBException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
     <E, X extends Exception> CloseableIteration<E, X> longPrefixIteration(long[] prefix, FailingKVMappingFunction<K, V, E, X> mappingFunction) {
       return prefixIteration(LONG_ARRAY_SERIALIZER.serialize(prefix), mappingFunction);
     }
@@ -251,18 +235,6 @@ public class RocksStore implements AutoCloseable {
         iterator.seek(prefix);
         iterator.status();
         return new RocksMappingIteration<>(iterator, prefix, keySerializer, valueSerializer, mappingFunction);
-      } catch (RocksDBException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    Iterator<Map.Entry<K, V>> longPrefixIterator(long[] prefix) {
-      try {
-        RocksIterator iterator = db.newIterator(columnFamilyHandle);
-        byte[] rawPrefix = LONG_ARRAY_SERIALIZER.serialize(prefix);
-        iterator.seek(rawPrefix);
-        iterator.status();
-        return new RocksSimpleIterator<>(iterator, rawPrefix, keySerializer, valueSerializer);
       } catch (RocksDBException e) {
         throw new RuntimeException(e);
       }
@@ -533,58 +505,6 @@ public class RocksStore implements AutoCloseable {
     @Override
     public void close() {
       iterator.close();
-    }
-  }
-
-  private static class RocksSimpleIterator<K, V> implements Iterator<Map.Entry<K, V>> {
-    private final RocksIterator iterator;
-    private final byte[] prefix;
-    private final Serializer<K> keySerializer;
-    private final Serializer<V> valueSerializer;
-
-
-    private RocksSimpleIterator(RocksIterator iterator, byte[] prefix, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
-      this.iterator = iterator;
-      this.prefix = prefix;
-      this.keySerializer = keySerializer;
-      this.valueSerializer = valueSerializer;
-    }
-
-    @Override
-    public boolean hasNext() {
-      boolean result = iterator.isValid() && hasPrefix();
-      if (!result) {
-        iterator.close();
-      }
-      return result;
-    }
-
-    @Override
-    public Map.Entry<K, V> next() {
-      if (!hasNext()) {
-        throw new NoSuchElementException("The iterator is finished");
-      }
-      try {
-        return Pair.of(
-                keySerializer.deserialize(iterator.key()),
-                valueSerializer.deserialize(iterator.value())
-        );
-      } finally {
-        iterator.next();
-      }
-    }
-
-    private boolean hasPrefix() {
-      byte[] key = iterator.key();
-      if (key.length < prefix.length) {
-        return false;
-      }
-      for (int i = 0; i < prefix.length; i++) {
-        if (key[i] != prefix[i]) {
-          return false;
-        }
-      }
-      return true;
     }
   }
 

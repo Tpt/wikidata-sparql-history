@@ -31,30 +31,6 @@ final class LongRangeUtils {
     return false;
   }
 
-  static long[] intersection(long[] a, long[] b) {
-    if (a.length == 0 || b.length == 0) {
-      return null;
-    } else if (a.length == 2 && b.length == 2) {
-      //Simple case optimization
-      long start = Math.max(a[0], b[0]);
-      long end = Math.min(a[1], b[1]);
-      return (end > start) ? new long[]{start, end} : null;
-    } else {
-      LongArrayList result = new LongArrayList();
-      for (int i = 0; i < a.length; i += 2) {
-        for (int j = 0; j < b.length; j += 2) {
-          long start = Math.max(a[i], b[j]);
-          long end = Math.min(a[i + 1], b[j + 1]);
-          if (end > start) {
-            result.add(start);
-            result.add(end);
-          }
-        }
-      }
-      return result.toArray();
-    }
-  }
-
   static long[] union(long[] a, long[] b) {
     if (a.length == 0) {
       return b;

@@ -330,7 +330,8 @@ class RdfBuilder {
     } else if (value instanceof QuantityValue) {
       return convertSimple((QuantityValue) value);
     } else {
-      throw new IllegalArgumentException("Not supported value type: " + value);
+      //TODO: unknown value
+      return VALUE_FACTORY.createLiteral(value.toString());
     }
   }
 

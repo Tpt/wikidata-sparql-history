@@ -121,7 +121,7 @@ public class RevisionFileConverter {
           revisions.put(revisionId, output.getStatements());
         }
       } catch (Exception e) {
-        LOGGER.warn(e.getMessage());
+        LOGGER.warn("Error while parsing revision " + mwRevision.toString() + ": " + e.getMessage());
       }
     }
 

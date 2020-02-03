@@ -406,7 +406,7 @@ public class RocksStore implements AutoCloseable {
     }
 
     @Override
-    public Long putString(String str) {
+    public synchronized Long putString(String str) {
       byte[] strBytes = str.getBytes();
       try {
         byte[] key = db.get(idForStringColumnFamilyHandle, strBytes);
@@ -421,7 +421,7 @@ public class RocksStore implements AutoCloseable {
       }
     }
 
-    private synchronized byte[] newStringKey() throws RocksDBException {
+    private byte[] newStringKey() throws RocksDBException {
       byte[] rawValue = db.get(STRING_COUNTER_NAME);
       long value = rawValue == null ? 0 : Longs.fromByteArray(rawValue);
       db.put(STRING_COUNTER_NAME, Longs.toByteArray(value + 1));
@@ -429,7 +429,7 @@ public class RocksStore implements AutoCloseable {
     }
 
     @Override
-    public Short putLanguage(String str) {
+    public synchronized Short putLanguage(String str) {
       byte[] strBytes = str.getBytes();
       try {
         byte[] key = db.get(idForLanguageColumnFamilyHandle, strBytes);

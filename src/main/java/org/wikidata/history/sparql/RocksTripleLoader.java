@@ -3,7 +3,9 @@ package org.wikidata.history.sparql;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Value;
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.OWL;
+import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.eclipse.rdf4j.rio.ntriples.NTriplesUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,8 +21,10 @@ import java.util.zip.GZIPInputStream;
 
 public final class RocksTripleLoader implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(RocksTripleLoader.class);
+  private static final IRI SCHEMA_DESCRIPTION = SimpleValueFactory.getInstance().createIRI("http://schema.org/description");
 
   private final RocksStore store;
+  private final Path countFile;
   private final boolean wdtOnly;
   private final NumericValueFactory valueFactory;
   private final RocksStore.Index<long[], long[]> spoIndex;
@@ -31,6 +35,7 @@ public final class RocksTripleLoader implements AutoCloseable {
 
   public RocksTripleLoader(Path path, boolean wdtOnly) {
     store = new RocksStore(path, false);
+    countFile = path.resolve("triple-progress.txt");
     valueFactory = new NumericValueFactory(store.getReadWriteStringStore());
     spoIndex = store.spoStatementIndex();
     posIndex = store.posStatementIndex();
@@ -42,6 +47,9 @@ public final class RocksTripleLoader implements AutoCloseable {
 
   public void load(Path file) throws IOException {
     LOGGER.info("Loading triples");
+    if (wdtOnly) {
+      LOGGER.info("Loading only direct properties");
+    }
     loadTriples(file);
 
     LOGGER.info("Compacting store");
@@ -53,11 +61,28 @@ public final class RocksTripleLoader implements AutoCloseable {
   }
 
   private void loadTriples(Path path) throws IOException {
-    AtomicLong done = new AtomicLong();
+    long start = 0;
+    try {
+      start = Long.parseLong(new String(Files.readAllBytes(countFile)).trim());
+    } catch (IOException e) {
+      LOGGER.error(e.getMessage(), e);
+    }
+
+    AtomicLong done = new AtomicLong(start);
     try (BufferedReader reader = gzipReader(path)) {
+      // We skip the lines we have to skip
+      for (long i = 0; i < start; i++) {
+        reader.readLine();
+      }
+
       reader.lines().parallel().peek(line -> {
         long count = done.getAndIncrement();
         if (count % 1_000_000 == 0) {
+          try {
+            Files.write(countFile, Long.toString(count).getBytes());
+          } catch (IOException e) {
+            LOGGER.error(e.getMessage(), e);
+          }
           LOGGER.info(count + " triples imported");
         }
       }).forEach(line -> {
@@ -70,7 +95,7 @@ public final class RocksTripleLoader implements AutoCloseable {
           Resource subject = NTriplesUtil.parseResource(parts[0], valueFactory);
           IRI predicate = NTriplesUtil.parseURI(parts[1], valueFactory);
           Value object = NTriplesUtil.parseValue(parts[2], valueFactory);
-          if (wdtOnly && !(OWL.SAMEAS.equals(predicate) || Vocabulary.WDT_NAMESPACE.equals(predicate.getNamespace()))) {
+          if (wdtOnly && !(OWL.SAMEAS.equals(predicate) || RDFS.LABEL.equals(predicate) || SCHEMA_DESCRIPTION.equals(predicate) || Vocabulary.WDT_NAMESPACE.equals(predicate.getNamespace()))) {
             return;
           }
           addTriple(

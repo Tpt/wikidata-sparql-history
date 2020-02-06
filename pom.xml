@@ -31,42 +31,42 @@
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-queryparser-sparql</artifactId>
-            <version>3.0.2</version>
+            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-queryalgebra-evaluation</artifactId>
-            <version>3.0.2</version>
+            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-queryresultio-sparqljson</artifactId>
-            <version>3.0.2</version>
+            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-queryresultio-sparqlxml</artifactId>
-            <version>3.0.2</version>
+            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-queryresultio-text</artifactId>
-            <version>3.0.2</version>
+            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-rio-turtle</artifactId>
-            <version>3.0.2</version>
+            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-rio-ntriples</artifactId>
-            <version>3.0.2</version>
+            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-rio-rdfxml</artifactId>
-            <version>3.0.2</version>
+            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>io.javalin</groupId>
@@ -86,13 +86,13 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.5.2</version>
+            <version>5.6.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.rocksdb</groupId>
             <artifactId>rocksdbjni</artifactId>
-            <version>6.5.2</version>
+            <version>6.5.3</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.collections</groupId>

@@ -1064,6 +1064,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     private final short languageId;
     private final StringStore stringStore;
     private String label = null;
+    private String language = null;
 
     private DictionaryLanguageTaggedString(long labelId, short languageId, StringStore stringStore) {
       this.labelId = labelId;
@@ -1092,7 +1093,10 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
     @Override
     public Optional<String> getLanguage() {
-      return Optional.ofNullable(stringStore.getLanguage(languageId));
+      if (language == null && stringStore != null) {
+        language = stringStore.getLanguage(languageId);
+      }
+      return Optional.ofNullable(language);
     }
 
     @Override

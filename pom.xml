@@ -8,10 +8,6 @@
     <artifactId>sparql-endpoint</artifactId>
     <version>0.1-SNAPSHOT</version>
 
-    <properties>
-        <jdkVersion>1.8</jdkVersion>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.apache.commons</groupId>

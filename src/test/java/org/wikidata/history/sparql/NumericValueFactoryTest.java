@@ -127,8 +127,8 @@ class NumericValueFactoryTest {
 
   static class TestStringStore implements NumericValueFactory.StringStore {
 
-    private static Map<String, Long> ENCODING = new HashMap<>();
-    private static Map<Long, String> DECODING = new HashMap<>();
+    private static final Map<String, Long> ENCODING = new HashMap<>();
+    private static final Map<Long, String> DECODING = new HashMap<>();
 
     static {
       ENCODING.put("foofoofoofoo", 0L);

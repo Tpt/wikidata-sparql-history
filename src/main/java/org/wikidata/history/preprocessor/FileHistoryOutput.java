@@ -18,7 +18,7 @@ import java.util.zip.GZIPOutputStream;
 
 public class FileHistoryOutput implements HistoryOutput {
 
-  private Writer revisionsWriter;
+  private final Writer revisionsWriter;
   private final Writer triplesWriter;
 
 

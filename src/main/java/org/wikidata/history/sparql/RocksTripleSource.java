@@ -3,7 +3,7 @@ package org.wikidata.history.sparql;
 
 import org.eclipse.rdf4j.common.iteration.*;
 import org.eclipse.rdf4j.model.*;
-import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
+import org.eclipse.rdf4j.model.vocabulary.XSD;
 import org.eclipse.rdf4j.query.QueryEvaluationException;
 import org.eclipse.rdf4j.query.algebra.evaluation.TripleSource;
 import org.slf4j.Logger;
@@ -653,7 +653,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
 
     @Override
     OptionalLong encodeValue(Value value) throws QueryEvaluationException {
-      if (value instanceof Literal && ((Literal) value).getDatatype().equals(XMLSchema.DATETIME)) {
+      if (value instanceof Literal && ((Literal) value).getDatatype().equals(XSD.DATETIME)) {
         try {
           return OptionalLong.of(Instant.parse(value.stringValue()).getEpochSecond());
         } catch (DateTimeParseException e) {
@@ -665,7 +665,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
 
     @Override
     Value decodeValue(long value) throws QueryEvaluationException {
-      return valueFactory.createLiteral(Instant.ofEpochSecond(value).toString(), XMLSchema.DATETIME);
+      return valueFactory.createLiteral(Instant.ofEpochSecond(value).toString(), XSD.DATETIME);
     }
   }
 
@@ -742,7 +742,7 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
 
     @Override
     CloseableIteration<Statement, QueryEvaluationException> getStatements(NumericValueFactory.RevisionIRI subjRevision, Value obj) {
-      if (!(obj instanceof Literal && ((Literal) obj).getDatatype().equals(XMLSchema.DATETIME))) {
+      if (!(obj instanceof Literal && ((Literal) obj).getDatatype().equals(XSD.DATETIME))) {
         return EMPTY_ITERATION;
       }
 

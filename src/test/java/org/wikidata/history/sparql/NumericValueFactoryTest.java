@@ -4,7 +4,7 @@ import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.vocabulary.GEO;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
-import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
+import org.eclipse.rdf4j.model.vocabulary.XSD;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -66,7 +66,7 @@ class NumericValueFactoryTest {
   void testTypedLiteralEncoding() throws NotSupportedValueException {
     NumericValueFactory valueFactory = new NumericValueFactory(new TestStringStore());
     testTypedLiteralConversion("foofoofoofoo", GEO.WKT_LITERAL, valueFactory);
-    testTypedLiteralConversion("foofoofoofoo", XMLSchema.DURATION, valueFactory);
+    testTypedLiteralConversion("foofoofoofoo", XSD.DURATION, valueFactory);
 
   }
 
@@ -82,7 +82,7 @@ class NumericValueFactoryTest {
     Literal value = (Literal) valueFactory.createValue(
             ((NumericValueFactory.NumericValue) valueFactory.createLiteral(str)).encode()
     );
-    Assertions.assertEquals(XMLSchema.STRING, value.getDatatype());
+    Assertions.assertEquals(XSD.STRING, value.getDatatype());
     Assertions.assertEquals(str, value.stringValue());
   }
 
@@ -99,21 +99,21 @@ class NumericValueFactoryTest {
     Literal valueInteger = (Literal) valueFactory.createValue(
             ((NumericValueFactory.NumericValue) valueFactory.createLiteral(number)).encode()
     );
-    Assertions.assertEquals(XMLSchema.INTEGER, valueInteger.getDatatype());
+    Assertions.assertEquals(XSD.INTEGER, valueInteger.getDatatype());
     Assertions.assertEquals(number, valueInteger.longValue());
 
     Literal valueDecimal = (Literal) valueFactory.createValue(
-            ((NumericValueFactory.NumericValue) valueFactory.createLiteral(Long.toString(number), XMLSchema.DECIMAL)).encode()
+            ((NumericValueFactory.NumericValue) valueFactory.createLiteral(Long.toString(number), XSD.DECIMAL)).encode()
     );
-    Assertions.assertEquals(XMLSchema.DECIMAL, valueDecimal.getDatatype());
+    Assertions.assertEquals(XSD.DECIMAL, valueDecimal.getDatatype());
     Assertions.assertEquals(number, valueDecimal.longValue());
   }
 
   private void testDateTimeConversion(String time, NumericValueFactory valueFactory) throws NotSupportedValueException {
     Literal value = (Literal) valueFactory.createValue(
-            ((NumericValueFactory.NumericValue) valueFactory.createLiteral(time, XMLSchema.DATETIME)).encode()
+            ((NumericValueFactory.NumericValue) valueFactory.createLiteral(time, XSD.DATETIME)).encode()
     );
-    Assertions.assertEquals(XMLSchema.DATETIME, value.getDatatype());
+    Assertions.assertEquals(XSD.DATETIME, value.getDatatype());
     Assertions.assertEquals(time, value.stringValue());
   }
 

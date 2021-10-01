@@ -426,14 +426,14 @@ class RdfBuilder {
 
   private Literal convert(BigDecimal value) {
     if (value.signum() != -1) {
-      return VALUE_FACTORY.createLiteral("+" + value.toPlainString(), XMLSchema.DECIMAL);
+      return VALUE_FACTORY.createLiteral("+" + value.toPlainString(), XSD.DECIMAL);
     } else {
-      return VALUE_FACTORY.createLiteral(value.toPlainString(), XMLSchema.DECIMAL);
+      return VALUE_FACTORY.createLiteral(value.toPlainString(), XSD.DECIMAL);
     }
   }
 
   private Literal convert(int value) {
-    return VALUE_FACTORY.createLiteral(Integer.toString(value), XMLSchema.INTEGER);
+    return VALUE_FACTORY.createLiteral(Integer.toString(value), XSD.INTEGER);
   }
 
   private IRI convert(StatementRank rank) {
@@ -472,7 +472,7 @@ class RdfBuilder {
     builder.append(timeForm.format(value.getSecond()));
     builder.append("Z");
     String time = builder.toString();
-    return VALUE_FACTORY.createLiteral(time, XMLSchema.DATETIME);
+    return VALUE_FACTORY.createLiteral(time, XSD.DATETIME);
 
     /*if ( !value.getPreferredCalendarModel().equals(TimeValue.CM_GREGORIAN_PRO) && value.getPrecision() >= TimeValue.PREC_DAY ) {
       return VALUE_FACTORY.createLiteral(

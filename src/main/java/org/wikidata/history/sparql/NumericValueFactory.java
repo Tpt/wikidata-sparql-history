@@ -2,11 +2,11 @@ package org.wikidata.history.sparql;
 
 import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.datatypes.XMLDatatypeUtil;
-import org.eclipse.rdf4j.model.impl.AbstractValueFactory;
+import org.eclipse.rdf4j.model.base.AbstractValueFactory;
 import org.eclipse.rdf4j.model.util.URIUtil;
 import org.eclipse.rdf4j.model.vocabulary.GEO;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
-import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
+import org.eclipse.rdf4j.model.vocabulary.XSD;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,44 +49,44 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
   private static final long MIN_ENCODED_VALUE = Long.MIN_VALUE / TYPE_SHIFT;
 
   private static final IRI[] DATATYPES = new IRI[]{
-          XMLSchema.STRING,
-          XMLSchema.BOOLEAN,
-          XMLSchema.DECIMAL,
-          XMLSchema.INTEGER,
-          XMLSchema.DOUBLE,
-          XMLSchema.FLOAT,
-          XMLSchema.DATE,
-          XMLSchema.TIME,
-          XMLSchema.DATETIME,
-          XMLSchema.GYEAR,
-          XMLSchema.GMONTH,
-          XMLSchema.GDAY,
-          XMLSchema.GYEARMONTH,
-          XMLSchema.GMONTHDAY,
-          XMLSchema.DURATION,
-          XMLSchema.YEARMONTHDURATION,
-          XMLSchema.DAYTIMEDURATION,
-          XMLSchema.BYTE,
-          XMLSchema.SHORT,
-          XMLSchema.INT,
-          XMLSchema.LONG,
-          XMLSchema.UNSIGNED_BYTE,
-          XMLSchema.UNSIGNED_SHORT,
-          XMLSchema.UNSIGNED_INT,
-          XMLSchema.UNSIGNED_LONG,
-          XMLSchema.POSITIVE_INTEGER,
-          XMLSchema.NON_NEGATIVE_INTEGER,
-          XMLSchema.NEGATIVE_INTEGER,
-          XMLSchema.NON_POSITIVE_INTEGER,
-          XMLSchema.HEXBINARY,
-          XMLSchema.BASE64BINARY,
-          XMLSchema.ANYURI,
-          XMLSchema.LANGUAGE,
-          XMLSchema.NORMALIZEDSTRING,
-          XMLSchema.TOKEN,
-          XMLSchema.NMTOKEN,
-          XMLSchema.NAME,
-          XMLSchema.NCNAME,
+          XSD.STRING,
+          XSD.BOOLEAN,
+          XSD.DECIMAL,
+          XSD.INTEGER,
+          XSD.DOUBLE,
+          XSD.FLOAT,
+          XSD.DATE,
+          XSD.TIME,
+          XSD.DATETIME,
+          XSD.GYEAR,
+          XSD.GMONTH,
+          XSD.GDAY,
+          XSD.GYEARMONTH,
+          XSD.GMONTHDAY,
+          XSD.DURATION,
+          XSD.YEARMONTHDURATION,
+          XSD.DAYTIMEDURATION,
+          XSD.BYTE,
+          XSD.SHORT,
+          XSD.INT,
+          XSD.LONG,
+          XSD.UNSIGNED_BYTE,
+          XSD.UNSIGNED_SHORT,
+          XSD.UNSIGNED_INT,
+          XSD.UNSIGNED_LONG,
+          XSD.POSITIVE_INTEGER,
+          XSD.NON_NEGATIVE_INTEGER,
+          XSD.NEGATIVE_INTEGER,
+          XSD.NON_POSITIVE_INTEGER,
+          XSD.HEXBINARY,
+          XSD.BASE64BINARY,
+          XSD.ANYURI,
+          XSD.LANGUAGE,
+          XSD.NORMALIZEDSTRING,
+          XSD.TOKEN,
+          XSD.NMTOKEN,
+          XSD.NAME,
+          XSD.NCNAME,
           RDF.HTML,
           RDF.XMLLITERAL,
           GEO.WKT_LITERAL
@@ -281,7 +281,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
         return new SmallStringLiteral(bytesToLong(encoding));
       }
     }
-    return createDictionaryLiteral(label, XMLSchema.STRING);
+    return createDictionaryLiteral(label, XSD.STRING);
   }
 
   @Override
@@ -297,13 +297,13 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
   @Override
   public Literal createLiteral(String label, IRI datatype) {
-    if (XMLSchema.STRING.equals(datatype)) {
+    if (XSD.STRING.equals(datatype)) {
       return createLiteral(label);
-    } else if (XMLSchema.DATETIME.equals(datatype)) {
+    } else if (XSD.DATETIME.equals(datatype)) {
       return createDateTime(label);
     } else if (GEO.WKT_LITERAL.equals(datatype)) {
       return createDictionaryLiteral(label, datatype);
-    } else if (XMLSchema.INTEGER.equals(datatype)) {
+    } else if (XSD.INTEGER.equals(datatype)) {
       try {
         long value = XMLDatatypeUtil.parseLong(label);
         if (MIN_ENCODED_VALUE < value && value < MAX_ENCODED_VALUE) {
@@ -314,7 +314,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
       } catch (NumberFormatException e) {
         return createDictionaryLiteral(label, datatype);
       }
-    } else if (XMLSchema.DECIMAL.equals(datatype)) {
+    } else if (XSD.DECIMAL.equals(datatype)) {
       try {
         long value = XMLDatatypeUtil.parseLong(label);
         if (MIN_ENCODED_VALUE < value && value < MAX_ENCODED_VALUE) {
@@ -354,7 +354,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     Matcher matcher = TIME_STRING_PATTERN.matcher(value);
     if (!matcher.matches()) {
       LOGGER.warn("Not valid time value: " + value);
-      return createDictionaryLiteral(value, XMLSchema.DATETIME);
+      return createDictionaryLiteral(value, XSD.DATETIME);
     }
     long year = XMLDatatypeUtil.parseLong(matcher.group(1));
     long month = Long.parseLong(matcher.group(2));
@@ -365,7 +365,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     long encoded = compose(compose(compose(compose(compose(year, 13, month), 32, day), 25, hours), 62, minutes), 62, seconds);
     if (encoded >= MAX_ENCODED_VALUE) {
       LOGGER.warn("Too big time value: " + value);
-      return createDictionaryLiteral(value, XMLSchema.DATETIME);
+      return createDictionaryLiteral(value, XSD.DATETIME);
     }
     return new TimeLiteral(encoded);
   }
@@ -390,7 +390,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     if (MIN_ENCODED_VALUE < value && value < MAX_ENCODED_VALUE) {
       return new SmallLongIntegerLiteral(value);
     } else {
-      return createDictionaryLiteral(Long.toString(value), XMLSchema.INTEGER);
+      return createDictionaryLiteral(Long.toString(value), XSD.INTEGER);
     }
   }
 
@@ -399,7 +399,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     try {
       return createLiteral(value.longValueExact());
     } catch (ArithmeticException e) {
-      return createDictionaryLiteral(value.toString(), XMLSchema.INTEGER);
+      return createDictionaryLiteral(value.toString(), XSD.INTEGER);
     }
   }
 
@@ -408,7 +408,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
     try {
       return createLiteral(value.longValueExact());
     } catch (ArithmeticException e) {
-      return createDictionaryLiteral(value.toPlainString(), XMLSchema.DECIMAL);
+      return createDictionaryLiteral(value.toPlainString(), XSD.DECIMAL);
     }
   }
 
@@ -872,8 +872,8 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
       StringBuilder sb = new StringBuilder(label.length() + 2);
       sb.append('"').append(label).append('"');
       getLanguage().ifPresent(lang -> sb.append('@').append(lang));
-      if (datatype != null && !datatype.equals(XMLSchema.STRING) && !datatype.equals(RDF.LANGSTRING)) {
-        sb.append("^^<").append(datatype.toString()).append(">");
+      if (datatype != null && !datatype.equals(XSD.STRING) && !datatype.equals(RDF.LANGSTRING)) {
+        sb.append("^^<").append(datatype).append(">");
       }
       return sb.toString();
     }
@@ -905,7 +905,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
     @Override
     public IRI getDatatype() {
-      return XMLSchema.DATETIME;
+      return XSD.DATETIME;
     }
 
     @Override
@@ -929,7 +929,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
       if (obj instanceof TimeLiteral) {
         return timestamp == ((TimeLiteral) obj).timestamp;
       } else if (obj instanceof Literal) {
-        return XMLSchema.DATETIME.equals(((Literal) obj).getDatatype()) && ((Literal) obj).getLabel().equals(getLabel());
+        return XSD.DATETIME.equals(((Literal) obj).getDatatype()) && ((Literal) obj).getLabel().equals(getLabel());
       } else {
         return false;
       }
@@ -974,7 +974,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
     @Override
     public IRI getDatatype() {
-      return XMLSchema.STRING;
+      return XSD.STRING;
     }
 
     @Override
@@ -983,7 +983,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
         SmallStringLiteral other = (SmallStringLiteral) obj;
         return encoding == other.encoding;
       } else if (obj instanceof Literal) {
-        return XMLSchema.STRING.equals(((Literal) obj).getDatatype()) && ((Literal) obj).getLabel().equals(getLabel());
+        return XSD.STRING.equals(((Literal) obj).getDatatype()) && ((Literal) obj).getLabel().equals(getLabel());
       } else {
         return false;
       }
@@ -1141,7 +1141,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
     @Override
     public IRI getDatatype() {
-      return XMLSchema.DECIMAL;
+      return XSD.DECIMAL;
     }
 
     @Override
@@ -1165,7 +1165,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
         SmallLongDecimalLiteral other = (SmallLongDecimalLiteral) obj;
         return value == other.value;
       } else if (obj instanceof Literal) {
-        return XMLSchema.DECIMAL.equals(((Literal) obj).getDatatype()) && ((Literal) obj).getLabel().equals(getLabel());
+        return XSD.DECIMAL.equals(((Literal) obj).getDatatype()) && ((Literal) obj).getLabel().equals(getLabel());
       } else {
         return false;
       }
@@ -1196,7 +1196,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
 
     @Override
     public IRI getDatatype() {
-      return XMLSchema.INTEGER;
+      return XSD.INTEGER;
     }
 
     @Override
@@ -1220,7 +1220,7 @@ final class NumericValueFactory extends AbstractValueFactory implements AutoClos
         SmallLongIntegerLiteral other = (SmallLongIntegerLiteral) obj;
         return value == other.value;
       } else if (obj instanceof Literal) {
-        return XMLSchema.DECIMAL.equals(((Literal) obj).getDatatype()) && ((Literal) obj).getLabel().equals(getLabel());
+        return XSD.DECIMAL.equals(((Literal) obj).getDatatype()) && ((Literal) obj).getLabel().equals(getLabel());
       } else {
         return false;
       }

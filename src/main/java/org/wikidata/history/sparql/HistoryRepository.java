@@ -165,7 +165,7 @@ public class HistoryRepository extends AbstractRepository implements AutoCloseab
 
     @Override
     public RepositoryResult<Statement> getStatements(Resource subj, IRI pred, Value obj, boolean includeInferred, Resource... contexts) throws RepositoryException {
-      return new RepositoryResult<>(new ExceptionConvertingIteration<Statement, RepositoryException>(
+      return new RepositoryResult<>(new ExceptionConvertingIteration<>(
               repository.tripleSource.getStatements(subj, pred, obj, contexts)
       ) {
         @Override

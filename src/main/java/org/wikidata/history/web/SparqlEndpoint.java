@@ -106,7 +106,7 @@ class SparqlEndpoint {
     } else if (parsedQuery instanceof ParsedTupleQuery) {
       evaluateTupleQuery((ParsedTupleQuery) parsedQuery, context);
     } else {
-      throw new BadRequestResponse("Unsupported kind of query: " + parsedQuery.toString());
+      throw new BadRequestResponse("Unsupported kind of query: " + parsedQuery);
     }
 
   }
@@ -156,7 +156,7 @@ class SparqlEndpoint {
     String mimeType;
     try {
       mimeType = ContentNegotiation.negotiateAccept(context.header(Header.ACCEPT), accepted)
-              .orElseThrow(() -> new NotAcceptableResponse("No acceptable result format found. Accepted format are: " + accepted.toString()));
+              .orElseThrow(() -> new NotAcceptableResponse("No acceptable result format found. Accepted format are: " + accepted));
     } catch (IllegalArgumentException e) {
       throw new BadRequestResponse(e.getMessage());
     }

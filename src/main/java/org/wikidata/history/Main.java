@@ -16,9 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class Main {
@@ -62,18 +60,26 @@ public class Main {
                 .filter(file -> file.toString().endsWith(".bz2"))
                 .collect(Collectors.toList());
         System.out.println("Loading " + files.size() + " files.");
-        executorService.invokeAll(files.stream().map(file -> (Callable<Void>) () -> {
-                  try {
-                    revisionFileConverter.process(file);
-                    log.write(file.toString() + "\tok\n");
-                  } catch (Exception e) {
-                    LOGGER.error(e.getMessage(), e);
-                    log.write(file.toString() + "\terror\t" + e.getMessage() + "\n");
-                  }
-                  return null;
-                })
-                        .collect(Collectors.toList())
-        );
+        List<Future<?>> futures = files.stream().map(file -> executorService.submit(() -> {
+          try {
+            revisionFileConverter.process(file);
+            log.write(file + "\tok\n");
+          } catch (Exception e) {
+            LOGGER.error(e.getMessage(), e);
+            try {
+              log.write(file.toString() + "\terror\t" + e.getMessage() + "\n");
+            } catch (IOException e2) {
+              throw new RuntimeException(e2);
+            }
+          }
+        })).collect(Collectors.toList());
+        for(Future<?> future : futures) {
+          try {
+            future.get();
+          } catch (ExecutionException e) {
+            LOGGER.error(e.toString(), e);
+          }
+        }
       } finally {
         executorService.shutdown();
       }

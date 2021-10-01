@@ -6,7 +6,8 @@ import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.OWL;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
-import org.eclipse.rdf4j.rio.ntriples.NTriplesUtil;
+import org.eclipse.rdf4j.model.vocabulary.SKOS;
+import org.eclipse.rdf4j.rio.helpers.NTriplesUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +23,7 @@ import java.util.zip.GZIPInputStream;
 public final class RocksTripleLoader implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(RocksTripleLoader.class);
   private static final IRI SCHEMA_DESCRIPTION = SimpleValueFactory.getInstance().createIRI("http://schema.org/description");
+  private static final IRI SCHEMA_ABOUT = SimpleValueFactory.getInstance().createIRI("http://schema.org/about");
 
   private final RocksStore store;
   private final Path countFile;
@@ -95,7 +97,7 @@ public final class RocksTripleLoader implements AutoCloseable {
           Resource subject = NTriplesUtil.parseResource(parts[0], valueFactory);
           IRI predicate = NTriplesUtil.parseURI(parts[1], valueFactory);
           Value object = NTriplesUtil.parseValue(parts[2], valueFactory);
-          if (wdtOnly && !(OWL.SAMEAS.equals(predicate) || RDFS.LABEL.equals(predicate) || SCHEMA_DESCRIPTION.equals(predicate) || Vocabulary.WDT_NAMESPACE.equals(predicate.getNamespace()))) {
+          if (wdtOnly && !(OWL.SAMEAS.equals(predicate) || RDFS.LABEL.equals(predicate) || SCHEMA_DESCRIPTION.equals(predicate) || SKOS.ALT_LABEL.equals(predicate) || SCHEMA_ABOUT.equals(predicate) || Vocabulary.WDT_NAMESPACE.equals(predicate.getNamespace()))) {
             return;
           }
           addTriple(

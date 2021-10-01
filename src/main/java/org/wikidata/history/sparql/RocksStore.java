@@ -245,7 +245,7 @@ public class RocksStore implements AutoCloseable {
     }
   }
 
-  private static final Serializer<Object> NULL_SERIALIZER = new Serializer<Object>() {
+  private static final Serializer<Object> NULL_SERIALIZER = new Serializer<>() {
     @Override
     public byte[] serialize(Object value) {
       return EMPTY_ARRAY;
@@ -257,7 +257,7 @@ public class RocksStore implements AutoCloseable {
     }
   };
 
-  private static final Serializer<String> STRING_SERIALIZER = new Serializer<String>() {
+  private static final Serializer<String> STRING_SERIALIZER = new Serializer<>() {
     @Override
     public byte[] serialize(String value) {
       return value.getBytes();
@@ -269,7 +269,7 @@ public class RocksStore implements AutoCloseable {
     }
   };
 
-  private static final Serializer<Long> LONG_SERIALIZER = new Serializer<Long>() {
+  private static final Serializer<Long> LONG_SERIALIZER = new Serializer<>() {
     @Override
     public byte[] serialize(Long value) {
       return Longs.toByteArray(value);
@@ -281,7 +281,7 @@ public class RocksStore implements AutoCloseable {
     }
   };
 
-  private static final Serializer<long[]> LONG_ARRAY_SERIALIZER = new Serializer<long[]>() {
+  private static final Serializer<long[]> LONG_ARRAY_SERIALIZER = new Serializer<>() {
     @Override
     public byte[] serialize(long[] value) {
       byte[] result = new byte[value.length * 8];
@@ -302,7 +302,7 @@ public class RocksStore implements AutoCloseable {
     }
   };
 
-  private static final Serializer<Map.Entry<String, Long>> STRING_LONG_SERIALIZER = new Serializer<Map.Entry<String, Long>>() {
+  private static final Serializer<Map.Entry<String, Long>> STRING_LONG_SERIALIZER = new Serializer<>() {
     @Override
     public byte[] serialize(Map.Entry<String, Long> value) {
       byte[] str = value.getKey().getBytes();

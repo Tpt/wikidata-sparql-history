@@ -126,13 +126,15 @@ public final class RocksTripleSource implements TripleSource, AutoCloseable {
 
   private CloseableIteration<Statement, QueryEvaluationException> getStatementsForBasicRelationWithGuess(Resource subj, IRI pred, Value obj, NumericValueFactory.RevisionIRI revisionIri) {
     // If we have a context we could restrict our triples patterns to triples in this context
-    if (revisionIri != null && revisionIri.getSnapshotType() == Vocabulary.SnapshotType.ADDITIONS) {
+    if (revisionIri == null || revisionIri.getSnapshotType() == Vocabulary.SnapshotType.GLOBAL_STATE ) {
+      return getStatementsForBasicRelation(subj, pred, obj, revisionIri);
+    } else if (revisionIri.getSnapshotType() == Vocabulary.SnapshotType.ADDITIONS) {
       return getStatementsInTripleListIndex(subj, pred, obj, revisionIri, insertedStatementIndex);
-    }
-    if (revisionIri != null && revisionIri.getSnapshotType() == Vocabulary.SnapshotType.DELETIONS) {
+    } else if (revisionIri.getSnapshotType() == Vocabulary.SnapshotType.DELETIONS) {
       return getStatementsInTripleListIndex(subj, pred, obj, revisionIri, deletedStatementIndex);
     } else {
-      return getStatementsForBasicRelation(subj, pred, obj, revisionIri);
+      LOGGER.warn("Not supported content IRI " + revisionIri);
+      return new EmptyIteration<>();
     }
   }
 

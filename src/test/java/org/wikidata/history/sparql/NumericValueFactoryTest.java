@@ -23,11 +23,14 @@ class NumericValueFactoryTest {
     testIRIConversion(Vocabulary.PS_NAMESPACE + "P42", valueFactory);
     testIRIConversion(Vocabulary.PQV_NAMESPACE + "P42", valueFactory);
     testIRIConversion(Vocabulary.REVISION_NAMESPACE + "123", valueFactory);
+    Assertions.assertEquals(valueFactory.createIRI(Vocabulary.REVISION_NAMESPACE + "123"), valueFactory.createRevisionIRI(123));
     testIRIConversion(Vocabulary.REVISION_GLOBAL_STATE_NAMESPACE + "123", valueFactory);
+    Assertions.assertEquals(valueFactory.createIRI(Vocabulary.REVISION_GLOBAL_STATE_NAMESPACE + "123"), valueFactory.createRevisionIRI(123,Vocabulary.SnapshotType.GLOBAL_STATE));
     testIRIConversion(Vocabulary.REVISION_ADDITIONS_NAMESPACE + "123", valueFactory);
+    Assertions.assertEquals(valueFactory.createIRI(Vocabulary.REVISION_ADDITIONS_NAMESPACE + "123"), valueFactory.createRevisionIRI(123,Vocabulary.SnapshotType.ADDITIONS));
     testIRIConversion(Vocabulary.REVISION_DELETIONS_NAMESPACE + "123", valueFactory);
+    Assertions.assertEquals(valueFactory.createIRI(Vocabulary.REVISION_DELETIONS_NAMESPACE + "123"), valueFactory.createRevisionIRI(123,Vocabulary.SnapshotType.DELETIONS));
     testIRIConversion("http://example.com", valueFactory);
-    //TODO: revision IRI
   }
 
   @Test
